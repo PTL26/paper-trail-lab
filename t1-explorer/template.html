@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<title>T1 Explorer — Honest Bot Lab</title>
+<link rel="icon" href="data:,">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f7f6f2;
+  --surface: #fcfcfb;
+  --line: #e2e0d9;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --ink-3: #75736c;
+  --accent: #1c5cab;
+  --bar: #2a78d6;
+  --good: #0ca30c;
+  --bad: #d03b3b;
+  --gate-row: #eef4fc;
+  --chip: #efeee9;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --bg: #121211;
+    --surface: #1a1a19;
+    --line: #34332f;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-3: #9a988f;
+    --accent: #86b6ef;
+    --bar: #3987e5;
+    --gate-row: #17263a;
+    --chip: #272724;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface: #1a1a19; --line: #34332f; --ink: #ffffff; --ink-2: #c3c2b7;
+  --ink-3: #9a988f; --accent: #86b6ef; --bar: #3987e5; --gate-row: #17263a; --chip: #272724;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1120px; margin: 0 auto; padding: 28px max(16px, 4vw) 40px; }
+a { color: var(--accent); }
+h1 { font-size: clamp(22px, 3.2vw, 30px); line-height: 1.2; margin: 6px 0 6px; letter-spacing: -0.01em; }
+h2 { font-size: 19px; margin: 0 0 4px; }
+.eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.lede { color: var(--ink-2); max-width: 760px; margin: 0; }
+section { margin-top: 32px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+.muted { color: var(--ink-2); }
+.small { font-size: 13px; }
+.verdict { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 6px 12px;
+  border-radius: 999px; font-weight: 700; letter-spacing: 0.02em; border: 1.5px solid currentColor; }
+.verdict.fail { color: var(--bad); } .verdict.pass { color: var(--good); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 14px; }
+.tile .name { font-size: 13px; color: var(--ink-2); font-weight: 600; }
+.tile .value { font-size: 30px; font-weight: 700; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
+.tile .thr { font-size: 13px; color: var(--ink-2); }
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; margin-top: 10px; }
+.status .dot { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center;
+  color: #fff; font-size: 12px; line-height: 1; }
+.status.pass { color: var(--ink); } .status.pass .dot { background: var(--good); }
+.status.fail { color: var(--ink); } .status.fail .dot { background: var(--bad); }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 20px; margin-top: 14px; }
+.fact b { display: block; font-size: 17px; font-variant-numeric: tabular-nums; }
+.fact span { font-size: 13px; color: var(--ink-2); }
+.funnel { margin-top: 14px; }
+.frow { display: grid; grid-template-columns: minmax(150px, 230px) 1fr; gap: 12px; align-items: center; padding: 5px 0; }
+.flabel { font-size: 13.5px; color: var(--ink-2); }
+.ftrack { position: relative; height: 24px; }
+.fbar { position: absolute; left: 0; top: 4px; height: 16px; min-width: 3px; background: var(--bar); border-radius: 0 4px 4px 0; }
+.fval { position: absolute; top: 2px; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.frow:hover .fbar, .frow:focus .fbar { filter: brightness(1.12); }
+.tip { position: fixed; pointer-events: none; z-index: 10; background: var(--ink); color: var(--surface);
+  font-size: 12.5px; padding: 6px 9px; border-radius: 6px; max-width: 260px; display: none; }
+.discovery { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 10px; }
+.discovery div { font-size: 13.5px; color: var(--ink-2); }
+.discovery b { color: var(--ink); font-variant-numeric: tabular-nums; }
+details summary { cursor: pointer; color: var(--accent); font-size: 13.5px; margin-top: 10px; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 14px 0 10px; }
+.controls input[type="search"], .controls select {
+  font: inherit; font-size: 14px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); min-width: 0; }
+.controls input[type="search"] { flex: 1 1 220px; }
+.controls label { font-size: 14px; display: inline-flex; gap: 6px; align-items: center; color: var(--ink-2); }
+button { font: inherit; font-size: 14px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--accent);
+  background: var(--accent); color: var(--surface); cursor: pointer; font-weight: 600; }
+button.ghost { background: transparent; color: var(--accent); }
+.swipe { display: none; font-size: 12.5px; color: var(--ink-2); margin: 0 0 6px; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { position: sticky; top: 0; background: var(--surface); font-size: 12px; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--ink-2); cursor: pointer; white-space: nowrap; user-select: none; }
+th[aria-sort="ascending"]::after { content: " ▲"; } th[aria-sort="descending"]::after { content: " ▼"; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.nowrap { white-space: nowrap; }
+tr.gate td { background: var(--gate-row); }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--chip); font-size: 12px; white-space: nowrap; }
+.neg { color: var(--bad); } .pos { color: var(--good); }
+.count { font-size: 13px; color: var(--ink-2); }
+.more { margin: 12px 0 0; }
+.posthoc { border-left: 4px solid var(--bad); }
+.label-warn { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--bad); margin-bottom: 6px; }
+footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-2); }
+@media (max-width: 560px) {
+  .frow { grid-template-columns: 1fr; gap: 2px; }
+  .tile .value { font-size: 26px; }
+  .swipe { display: block; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Honest Bot Lab · Study T1</div>
+    <h1 id="title"></h1>
+    <p class="lede">A pre-registered test: would a €2,000 brokerage account have made money, repeatedly, on US
+      small-holder events — odd-lot tender offers and fixed-price reverse-split cash-outs? Every rule and
+      pass/fail gate was fixed before the data was seen. <span id="window"></span></p>
+    <div id="verdict" class="verdict" role="status"></div>
+  </header>
+
+  <section aria-labelledby="gates-h">
+    <h2 id="gates-h">The three gates</h2>
+    <p class="muted small">Decided before any data. PASS needs all three.</p>
+    <div class="tiles" id="tiles"></div>
+    <div class="facts card" id="facts" style="margin-top:12px"></div>
+  </section>
+
+  <section aria-labelledby="funnel-h">
+    <h2 id="funnel-h">The funnel</h2>
+    <div class="discovery" id="discovery"></div>
+    <div class="card funnel" id="funnel" role="list"></div>
+    <p class="muted small">Order of checks: E1 → E2 → E4 → entry price → E3 (the cost check needs the entry price).
+      One further event passed every check but its offer had not finished by the data cutoff; it counts toward
+      the frequency gate only.</p>
+    <details><summary>Show the funnel as a table</summary>
+      <div class="tablewrap" style="margin-top:8px"><table id="funnel-table"></table></div>
+    </details>
+  </section>
+
+  <section aria-labelledby="events-h">
+    <h2 id="events-h">Every event</h2>
+    <p class="muted small">All events found in SEC filings, each with the bucket it ended in and why. Net result and
+      percentage are shown for gate events only (after costs, in euros). Each row links to its SEC filing so any
+      number can be checked against the source.</p>
+    <div class="controls">
+      <input type="search" id="q" placeholder="Search company, ticker, reason…" aria-label="Search">
+      <select id="f-cat" aria-label="Category"></select>
+      <select id="f-bucket" aria-label="Bucket"></select>
+      <label><input type="checkbox" id="f-gate"> Gate set only</label>
+      <button id="dl" type="button">Download data (CSV)</button>
+    </div>
+    <div class="count" id="count"></div>
+    <p class="swipe">Swipe the table sideways for net result and the SEC filing link →</p>
+    <div class="tablewrap"><table id="events"><thead></thead><tbody></tbody></table></div>
+    <div class="more"><button class="ghost" id="more" type="button">Show more</button></div>
+  </section>
+
+  <section aria-labelledby="amend-h">
+    <h2 id="amend-h">Amendments</h2>
+    <p class="muted small">Every change after pre-registration, each committed before the data it governs and
+      reported with and without it. None changed the verdict.</p>
+    <div class="tablewrap"><table id="amendments"></table></div>
+  </section>
+
+  <section aria-labelledby="post-h">
+    <div class="card posthoc">
+      <div class="label-warn">Post-hoc · not pre-registered · cannot change the verdict</div>
+      <h2 id="post-h">What if entry had required a positive spread?</h2>
+      <p class="muted">The pre-registered rule bought every eligible event the day after the announcement, even when
+        the market price was already above the offer — a design error in the study's brief. Below: the same events,
+        keeping only those where the entry-day price was below the offer price (for Dutch auctions, below the low
+        end of the range in the strict version, below the high end in the lenient one).</p>
+      <div class="tablewrap"><table id="posthoc"></table></div>
+      <p class="muted small" id="posthoc-note"></p>
+    </div>
+  </section>
+
+  <section aria-labelledby="method-h">
+    <h2 id="method-h">Method, briefly</h2>
+    <div class="card">
+      <p><b>Data.</b> Tender-offer, going-private and proxy filings from SEC EDGAR, grouped into events. A language
+        model read the filings into fields (offer type, odd-lot priority, cash-out terms, outcome, final price); every
+        value cites its source filing, and a sample was checked by a second model and partly by hand.</p>
+      <p><b>Trade rule.</b> Buy 99 shares at the close of the first trading day after the announcement; tender; collect
+        the final price paid. Costs: $1 per order, $2 currency conversion per event. Results in euros.</p>
+      <p><b>What is published.</b> Derived results only — net result and percentage per gate event, bucket, reason,
+        outcome — plus offer terms from SEC filings. No market price data is reproduced.</p>
+      <p class="muted small">Full write-up: <a href="#" aria-disabled="true">coming soon</a>.</p>
+    </div>
+  </section>
+
+  <footer>
+    <div><b>Honest Bot Lab</b> · Content and data: CC BY 4.0 · Code: MIT</div>
+    <div>Research and engineering only. Not investment advice.</div>
+  </footer>
+</div>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+const DATA = /*__DATA__*/null;
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const minus = (s) => s.replace("-", "−");
+  const eur = (v) => v == null ? "" : minus((v < 0 ? "-" : "") + "€" + Math.abs(v).toLocaleString("en-GB", {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+  const pct = (v) => v == null ? "" : minus(v.toFixed(1) + "%");
+  const SEC = "https://www.sec.gov/Archives/edgar/data/";
+
+  // expand compact rows
+  const E = DATA.events, L = E.lookup, C = E.columns;
+  const rows = E.rows.map((rec) => {
+    const r = {};
+    C.forEach((c, i) => {
+      let v = rec[i];
+      if (L[c]) v = L[c][v];
+      else if (c === "filing") { const [cik, acc] = v.split("/"); v = SEC + cik + "/" + acc.replace(/-/g, "") + "/" + acc + "-index.htm"; }
+      r[c] = v;
+    });
+    r._hay = (r.company + " " + r.ticker + " " + r.reason + " " + r.category + " " + r.id).toLowerCase();
+    return r;
+  });
+
+  // header + verdict
+  $("title").textContent = DATA.title;
+  $("window").textContent = "Window: " + DATA.window + ". Data as of " + DATA.pull_date + ".";
+  const v = DATA.verdict, vEl = $("verdict");
+  vEl.className = "verdict " + (v === "PASS" ? "pass" : "fail");
+  vEl.textContent = (v === "PASS" ? "✓ " : "✗ ") + "Verdict: " + v;
+
+  // gate tiles
+  $("tiles").innerHTML = DATA.gates.map((g) => {
+    const val = g.unit === "€" ? eur(g.value) : g.value + " " + g.unit;
+    const st = g.pass ? "pass" : "fail";
+    return `<div class="card tile"><div class="name">${esc(g.id)} · ${esc(g.name)}</div>
+      <div class="value">${esc(val)}</div><div class="thr">Needed ${esc(g.threshold)} · ${esc(g.detail)}</div>
+      <div class="status ${st}"><span class="dot" aria-hidden="true">${g.pass ? "✓" : "✗"}</span>${g.pass ? "PASS" : "FAIL"}</div></div>`;
+  }).join("");
+  const I = DATA.info;
+  const fact = (b, s) => `<div class="fact"><b>${esc(b)}</b><span>${esc(s)}</span></div>`;
+  $("facts").innerHTML =
+    fact(eur(I.mean_eur), "mean net per gate event") +
+    fact(I.hit_rate + "%", "of gate events profitable") +
+    fact("€2,000 → " + eur(I.sim_final_eur), `capital-constrained account (${minus(I.sim_annualized.toFixed(1))}% a year)`) +
+    fact(`${I.t3.verdict} at T+3`, `entry three days later: ${I.t3.G1} events, median ${eur(I.t3.G2)}, worst ${eur(I.t3.G3)}`) +
+    fact(`${I.no_rule6.verdict} without rule 6`, `counting every labelled cash-out: ${I.no_rule6.G1} events, median ${eur(I.no_rule6.G2)}, worst ${eur(I.no_rule6.G3)}`) +
+    fact(Object.values(I.g1_by_year).join(" / "), "eligible events in " + Object.keys(I.g1_by_year).join(" / ") + " (2026 to August)");
+
+  // funnel
+  $("discovery").innerHTML = DATA.discovery.map((d) => `<div><b>${d.n.toLocaleString("en-GB")}</b> ${esc(d.stage)}</div>`).join("<div>→</div>");
+  const F = DATA.funnel, max = F[0].n, tip = $("tip");
+  $("funnel").innerHTML = F.map((f, i) => {
+    const w = Math.max(0.6, 88 * f.n / max);  // leave room for the value label
+    const prev = i ? F[i - 1].n : null;
+    const t = `${f.stage}: ${f.n} events` + (prev ? ` (${Math.round(100 * f.n / prev)}% of the previous stage)` : "");
+    return `<div class="frow" role="listitem" tabindex="0" data-tip="${esc(t)}" aria-label="${esc(t)}">
+      <div class="flabel">${esc(f.stage)}</div>
+      <div class="ftrack"><div class="fbar" style="width:${w}%"></div>
+      <div class="fval" style="left:calc(${w}% + 8px)">${f.n}</div></div></div>`;
+  }).join("");
+  $("funnel").querySelectorAll(".frow").forEach((el) => {
+    const show = (x, y) => { tip.textContent = el.dataset.tip; tip.style.display = "block";
+      tip.style.left = Math.min(x + 14, innerWidth - tip.offsetWidth - 8) + "px"; tip.style.top = (y + 14) + "px"; };
+    el.addEventListener("mousemove", (e) => show(e.clientX, e.clientY));
+    el.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+    el.addEventListener("focus", () => { const r = el.getBoundingClientRect(); show(r.left + 40, r.top + 10); });
+    el.addEventListener("blur", () => { tip.style.display = "none"; });
+  });
+  $("funnel-table").innerHTML = "<thead><tr><th>Stage</th><th>Events</th></tr></thead><tbody>" +
+    DATA.discovery.concat(F).map((f) => `<tr><td>${esc(f.stage)}</td><td class="num">${f.n.toLocaleString("en-GB")}</td></tr>`).join("") + "</tbody>";
+
+  // events table
+  const BL = DATA.bucket_labels;
+  const cats = [...new Set(rows.map((r) => r.category))].sort();
+  const buckets = Object.keys(BL).filter((b) => rows.some((r) => r.bucket === b));
+  $("f-cat").innerHTML = '<option value="">All categories</option>' + cats.map((c) => `<option>${esc(c)}</option>`).join("");
+  $("f-bucket").innerHTML = '<option value="">All buckets</option>' + buckets.map((b) =>
+    `<option value="${b}">${esc(BL[b])} (${rows.filter((r) => r.bucket === b).length})</option>`).join("");
+  const COLS = [["date", "Date"], ["company", "Company"], ["ticker", "Ticker"], ["category", "Category"],
+    ["bucket", "Bucket"], ["reason", "Reason"], ["outcome", "Outcome"], ["net_eur", "Net € (%)"], ["filing", "Filing"]];
+  const OUTCOME = {completed: "completed", withdrawn: "withdrawn", amended_then_completed: "amended, then completed", unknown: "not known yet"};
+  const thead = document.querySelector("#events thead");
+  thead.innerHTML = "<tr>" + COLS.map(([k, n]) => `<th scope="col" data-k="${k}">${n}</th>`).join("") + "</tr>";
+  // default order: gate set first, then the unresolved event, then everything else by date
+  const RANK = {GATE_SET: 0, UNRESOLVED_AT_CUTOFF: 1};
+  let sortKey = "_default", sortDir = 1, limit = 100, view = [];
+  const cmp = (a, b) => {
+    if (sortKey === "_default") {
+      const ra = RANK[a.bucket] ?? 2, rb = RANK[b.bucket] ?? 2;
+      return ra - rb || a.date.localeCompare(b.date);
+    }
+    const x = a[sortKey], y = b[sortKey];
+    if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1;
+    return (typeof x === "number" ? x - y : String(x).localeCompare(String(y))) * sortDir;
+  };
+  function apply() {
+    const q = $("q").value.trim().toLowerCase(), c = $("f-cat").value, b = $("f-bucket").value, g = $("f-gate").checked;
+    view = rows.filter((r) => (!q || r._hay.includes(q)) && (!c || r.category === c) && (!b || r.bucket === b) &&
+      (!g || r.bucket === "GATE_SET")).sort(cmp);
+    render();
+  }
+  function render() {
+    thead.querySelectorAll("th").forEach((th) => th.setAttribute("aria-sort",
+      th.dataset.k === sortKey ? (sortDir > 0 ? "ascending" : "descending") : "none"));
+    const shown = view.slice(0, limit);
+    document.querySelector("#events tbody").innerHTML = shown.map((r) => {
+      const cls = r.net_eur == null ? "" : (r.net_eur < 0 ? "neg" : "pos");
+      return `<tr class="${r.bucket === "GATE_SET" ? "gate" : ""}"><td class="nowrap">${esc(r.date)}</td><td>${esc(r.company)}</td>
+        <td class="nowrap">${esc(r.ticker)}</td><td>${esc(r.category)}</td><td><span class="chip">${esc(BL[r.bucket] || r.bucket)}</span></td>
+        <td>${esc(r.reason)}</td><td>${esc(OUTCOME[r.outcome] ?? r.outcome)}</td>
+        <td class="num ${cls}">${esc(eur(r.net_eur))}${r.pct == null ? "" : `<div class="small">${esc((r.pct > 0 ? "+" : "") + pct(r.pct))}</div>`}</td>
+        <td class="nowrap"><a href="${esc(r.filing)}" target="_blank" rel="noopener noreferrer">SEC filing</a></td></tr>`;
+    }).join("");
+    $("count").textContent = `Showing ${shown.length.toLocaleString("en-GB")} of ${view.length.toLocaleString("en-GB")} matching events (${rows.length.toLocaleString("en-GB")} in total).`;
+    $("more").style.display = view.length > limit ? "" : "none";
+  }
+  thead.addEventListener("click", (e) => {
+    const k = e.target.closest("th")?.dataset.k; if (!k) return;
+    sortDir = k === sortKey ? -sortDir : (k === "net_eur" || k === "pct" ? -1 : 1); sortKey = k; apply();
+  });
+  ["q", "f-cat", "f-bucket", "f-gate"].forEach((id) => $(id).addEventListener("input", () => { limit = 100; apply(); }));
+  $("more").addEventListener("click", () => { limit += 200; render(); });
+
+  // CSV download: the full derived dataset, same fields as the table (no raw prices)
+  $("dl").addEventListener("click", () => {
+    const q = (s) => { s = s == null ? "" : String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    const head = ["id", "date", "company", "ticker", "category", "bucket", "reason", "outcome", "net_eur", "pct", "sec_filing"];
+    const lines = [head.join(",")].concat(rows.map((r) => [r.id, r.date, r.company, r.ticker, r.category, r.bucket,
+      r.reason, r.outcome, r.net_eur, r.pct, r.filing].map(q).join(",")));
+    const blob = new Blob([lines.join("\n") + "\n"], {type: "text/csv;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "t1_events_derived.csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+
+  // amendments + post-hoc
+  $("amendments").innerHTML = "<thead><tr><th>#</th><th>Change</th><th>Reason</th><th>Effect on gate events</th></tr></thead><tbody>" +
+    DATA.amendments.map((a) => `<tr><td class="num">${esc(a.n)}</td><td>${esc(a.change)}</td><td>${esc(a.reason)}</td><td>${esc(a.effect)}</td></tr>`).join("") + "</tbody>";
+  $("posthoc").innerHTML = "<thead><tr><th>Rule</th><th>G1 events</th><th>G2 median</th><th>G3 worst</th><th>Verdict</th></tr></thead><tbody>" +
+    DATA.posthoc.map((p) => `<tr><td>${esc(p.rule)}</td><td class="num">${p.G1}</td><td class="num">${esc(p.G2)}</td><td class="num">${esc(p.G3)}</td><td>${esc(p.verdict)}</td></tr>`).join("") + "</tbody>";
+  $("posthoc-note").textContent = "The verdict would not change: still FAIL, now on frequency alone (G2 and G3 would pass). " +
+    "The extracted offer price is the price after the latest amendment, so this view carries a small look-ahead.";
+
+  apply();
+})();
+</script>
+</body>
+</html>
