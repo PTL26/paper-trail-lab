@@ -23,6 +23,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(ROOT))
 
+SEC_PREFIX = "https://www.sec.gov/Archives/edgar/data/"
 COLUMNS = ["id", "date", "company", "ticker", "category", "bucket", "reason", "outcome",
            "net_eur", "pct", "filing"]
 CATEGORY = {
@@ -35,8 +36,8 @@ CATEGORY = {
     "orphan_amendment": "Amendment to an earlier offer",
 }
 BUCKET_LABEL = {
-    "GATE_SET": "Gate set",
-    "UNRESOLVED_AT_CUTOFF": "Unresolved at cutoff",
+    "GATE_SET": "Gate set · traded",
+    "UNRESOLVED_AT_CUTOFF": "Eligible · unresolved at cutoff",
     "TOO_EXPENSIVE_E3": "Too expensive (E3)",
     "PRICE_MISSING": "Price missing",
     "OTC_E4": "OTC (E4)",
@@ -96,9 +97,20 @@ def scrub_reason(bucket: str, reason: str) -> str:
 
 
 def filing_index_url(txt_url: str) -> str:
+    """The filing's index page on EDGAR, always over https whatever the source URL used."""
     base, acc = txt_url.rsplit("/", 1)
     acc = acc[:-4] if acc.endswith(".txt") else acc
-    return f"{base}/{acc.replace('-', '')}/{acc}-index.htm"
+    cik = base.rstrip("/").rsplit("/", 1)[1]
+    return f"{SEC_PREFIX}{cik}/{acc.replace('-', '')}/{acc}-index.htm"
+
+
+def eligible_label(eligible: int, traded: int, names: Optional[List[str]] = None) -> str:
+    """One wording for every G1 count: '15 eligible = 14 traded + 1 unresolved at cutoff (Arbutus)'."""
+    unresolved = eligible - traded
+    if unresolved < 0:
+        raise ValueError(f"traded {traded} > eligible {eligible}")
+    tail = f" ({', '.join(names)})" if names and len(names) == unresolved else ""
+    return f"{eligible} eligible = {traded} traded + {unresolved} unresolved at cutoff{tail}"
 
 
 def _num(s: str) -> Optional[float]:
@@ -126,7 +138,6 @@ def derive_row(event: Dict[str, str], p: Dict[str, str], extraction: Optional[Di
 
 
 LOOKUP_FIELDS = ["category", "bucket", "reason", "outcome"]
-SEC_PREFIX = "https://www.sec.gov/Archives/edgar/data/"
 
 
 def compact(rows: List[Dict]) -> Dict:
@@ -178,46 +189,66 @@ def derive_dataset(t1: Path) -> Dict:
     amendments = [{"n": a["#"], "change": a["Change"], "reason": a["Reason"], "effect": a["Effect on gate events"]}
                   for a in parse_md_table(md, "## 1.")]
     funnel_md = parse_md_table(md, "## 2.")
-    posthoc = [{"rule": r["Post-hoc rule"], "G1": int(r["G1"]), "G2": r["G2 median"], "G3": r["G3 worst"],
-                "verdict": r["Verdict"]} for r in parse_md_table(md, "## 7.")]
     count = lambda label: next(int(r["Events"].replace(",", "")) for r in funnel_md if r["Stage"].startswith(label))  # noqa: E731
+    if len(rows) != count("Events"):
+        raise ValueError("event table does not cover every event found")
+    traded = [r for r in rows if r["bucket"] == "GATE_SET"]
+    unresolved = [r["company"].split()[0].title() for r in rows if r["bucket"] == "UNRESOLVED_AT_CUTOFF"]
+    if len(traded) != g["G1_without_unresolved"] or len(traded) + len(unresolved) != g["G1"]:
+        raise ValueError("G1 does not reconcile with the event buckets")
+    if (t3["G1"], t3["G1_without_unresolved"]) != (g["G1"], g["G1_without_unresolved"]):
+        raise ValueError("T+3 eligible set differs from T+1; the shared G1 wording would be wrong")
+    g1_label = eligible_label(g["G1"], len(traded), unresolved)
+    # post-hoc: the dropped "Excluded" column holds raw entry closes; only its entry count is used
+    posthoc = []
+    for r in parse_md_table(md, "## 7."):
+        n_excl = len([x for x in r["Excluded (ticker, entry, reference)"].split(";") if x.strip()])
+        posthoc.append({"rule": r["Post-hoc rule"], "G1": int(r["G1"]),
+                        "G1_label": eligible_label(int(r["G1"]), len(traded) - n_excl),
+                        "G2": r["G2 median"], "G3": r["G3 worst"], "verdict": r["Verdict"]})
     funnel = [
-        {"stage": "Extracted in detail", "n": count("Extracted")},
+        {"stage": "Read in detail", "n": count("Extracted")},
         {"stage": "E1 small-holder clause", "n": count("E1")},
         {"stage": "E2 street-name rule (cash-outs)", "n": count("E2")},
         {"stage": "E4 US-listed", "n": count("E4")},
         {"stage": "E5 entry price available", "n": count("E5")},
         {"stage": "E3 99 shares ≤ €1,900", "n": count("E3")},
-        {"stage": "Gate set (resolved)", "n": count("Gate set")},
+        {"stage": g1_label, "n": g["G1"], "split": [len(traded), len(unresolved)]},
     ]
     discovery = [
         {"stage": "events found in SEC filings", "n": count("Events")},
         {"stage": "announced in the window", "n": count("Announced")},
         {"stage": "with a small-holder keyword", "n": count("… with a small-holder keyword")},
     ]
+    removed = count("… no public market") + count("… ordinary reverse splits")
+    if count("… with a small-holder keyword") - removed != count("Extracted"):
+        raise ValueError("discovery stages do not reconcile with the 365 read in detail")
     return {
         "title": "T1 — small-holder tender offers and cash-outs on a €2,000 account",
         "window": "2024-01-01 to 2026-08-31",
         "pull_date": "2026-09-24",
         "verdict": g["verdict"],
         "gates": [
-            {"id": "G1", "name": "Frequency", "value": g["G1"], "unit": "events", "threshold": "≥ 22 (8 a year)",
-             "pass": g["G1_pass"], "detail": f"{g['G1_per_year']:.1f} a year"},
+            {"id": "G1", "name": "Frequency", "value": g["G1"], "unit": "eligible", "threshold": "≥ 22 (8 a year)",
+             "pass": g["G1_pass"], "detail": f"{g['G1_per_year']:.1f} a year", "label": g1_label},
             {"id": "G2", "name": "Median net per event", "value": round(g["G2_median_eur"], 2), "unit": "€",
-             "threshold": "≥ €25", "pass": g["G2_pass"], "detail": "after costs"},
+             "threshold": "≥ €25", "pass": g["G2_pass"], "detail": f"after costs, median of the {len(traded)} traded"},
             {"id": "G3", "name": "Worst single event", "value": round(g["G3_worst_eur"], 2), "unit": "€",
-             "threshold": "≥ −€150", "pass": g["G3_pass"], "detail": "after costs"},
+             "threshold": "≥ −€150", "pass": g["G3_pass"], "detail": f"after costs, worst of the {len(traded)} traded"},
         ],
         "info": {
             "mean_eur": round(g["mean_eur"], 2), "hit_rate": round(100 * g["hit_rate"]),
             "sim_final_eur": round(summary["simulation"]["final_eur"], 2),
             "sim_annualized": round(100 * summary["simulation"]["annualized"], 2),
-            "t3": {"G1": t3["G1"], "G2": round(t3["G2_median_eur"], 2), "G3": round(t3["G3_worst_eur"], 2),
+            "t3": {"G1": t3["G1"], "G1_label": g1_label, "G2": round(t3["G2_median_eur"], 2), "G3": round(t3["G3_worst_eur"], 2),
                    "verdict": t3["verdict"]},
-            "no_rule6": {"G1": no6["G1"], "G2": round(no6["G2_median_eur"], 2),
+            "no_rule6": {"G1": no6["G1"], "G1_label": eligible_label(no6["G1"], no6["G1_without_unresolved"]), "G2": round(no6["G2_median_eur"], 2),
                          "G3": round(no6["G3_worst_eur"], 2), "verdict": no6["verdict"]},
             "g1_by_year": summary["G1_by_year"],
         },
+        "bases": {"found": count("Events"), "in_window": count("Announced"), "detail": count("Extracted"),
+                  "removed_before_detail": removed},
+        "g1": {"label": g1_label, "eligible": g["G1"], "traded": len(traded), "unresolved": unresolved},
         "discovery": discovery,
         "funnel": funnel,
         "amendments": amendments,
@@ -244,6 +275,11 @@ def external_requests(html: str) -> List[str]:
     return found
 
 
+def plain_http(html: str) -> List[str]:
+    """Links that are not https (every SEC link must be https)."""
+    return [m.group(0)[:60] for m in re.finditer(r"http://[^\s\"'<>]*", html)]
+
+
 def render(template: str, data: Dict) -> str:
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     return template.replace("/*__DATA__*/null", payload)
@@ -264,7 +300,7 @@ def main() -> int:  # pragma: no cover - CLI
         n = sanitize_file(raw, HERE / "data" / "t1.json", deny, mapping, repo_root=ROOT)
     clean = json.loads((HERE / "data" / "t1.json").read_text(encoding="utf-8"))
     html = render((HERE / "template.html").read_text(encoding="utf-8"), clean)
-    problems = external_requests(html)
+    problems = external_requests(html) + plain_http(html)
     hits = scan_text(html, deny, "index.html")
     if problems or hits:
         print(f"refusing to write index.html: {len(problems)} external request(s), {len(hits)} guard hit(s)")

@@ -52,6 +52,22 @@ def test_filing_index_url():
         "https://www.sec.gov/Archives/edgar/data/1234/000000000025000001/0000000000-25-000001-index.htm")
 
 
+def test_filing_index_url_is_always_https():
+    plain = EVENT["first_url"].replace("https://", "http://")
+    assert build.filing_index_url(plain) == build.filing_index_url(EVENT["first_url"])
+    assert build.filing_index_url(plain).startswith("https://www.sec.gov/")
+
+
+def test_eligible_label_wording():
+    assert build.eligible_label(15, 14, ["Arbutus"]) == "15 eligible = 14 traded + 1 unresolved at cutoff (Arbutus)"
+    assert build.eligible_label(27, 24) == "27 eligible = 24 traded + 3 unresolved at cutoff"
+    assert build.eligible_label(8, 7, ["A", "B"]) == "8 eligible = 7 traded + 1 unresolved at cutoff"  # names must fit
+
+
+def test_plain_http_detector():
+    assert build.plain_http('<a href="http://www.sec.gov/x">') and not build.plain_http('<a href="https://www.sec.gov/x">')
+
+
 def test_category_labels():
     assert build.category_label(EVENT, {"offer_type": "cashout"}) == "Cash-out"
     assert build.category_label(dict(EVENT, is_CEF="Y"), {"offer_type": "fixed"}) == "Fund tender"

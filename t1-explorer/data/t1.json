@@ -8,10 +8,11 @@
    "id": "G1",
    "name": "Frequency",
    "value": 15,
-   "unit": "events",
+   "unit": "eligible",
    "threshold": "≥ 22 (8 a year)",
    "pass": false,
-   "detail": "5.6 a year"
+   "detail": "5.6 a year",
+   "label": "15 eligible = 14 traded + 1 unresolved at cutoff (Arbutus)"
   },
   {
    "id": "G2",
@@ -20,7 +21,7 @@
    "unit": "€",
    "threshold": "≥ €25",
    "pass": false,
-   "detail": "after costs"
+   "detail": "after costs, median of the 14 traded"
   },
   {
    "id": "G3",
@@ -29,7 +30,7 @@
    "unit": "€",
    "threshold": "≥ −€150",
    "pass": false,
-   "detail": "after costs"
+   "detail": "after costs, worst of the 14 traded"
   }
  ],
  "info": {
@@ -39,12 +40,14 @@
   "sim_annualized": -2.19,
   "t3": {
    "G1": 15,
+   "G1_label": "15 eligible = 14 traded + 1 unresolved at cutoff (Arbutus)",
    "G2": 11.69,
    "G3": -836.81,
    "verdict": "FAIL"
   },
   "no_rule6": {
    "G1": 27,
+   "G1_label": "27 eligible = 24 traded + 3 unresolved at cutoff",
    "G2": 16.17,
    "G3": -524.38,
    "verdict": "FAIL"
@@ -54,6 +57,20 @@
    "2025": 4,
    "2026": 7
   }
+ },
+ "bases": {
+  "found": 3858,
+  "in_window": 3138,
+  "detail": 365,
+  "removed_before_detail": 1142
+ },
+ "g1": {
+  "label": "15 eligible = 14 traded + 1 unresolved at cutoff (Arbutus)",
+  "eligible": 15,
+  "traded": 14,
+  "unresolved": [
+   "Arbutus"
+  ]
  },
  "discovery": [
   {
@@ -71,7 +88,7 @@
  ],
  "funnel": [
   {
-   "stage": "Extracted in detail",
+   "stage": "Read in detail",
    "n": 365
   },
   {
@@ -95,8 +112,12 @@
    "n": 15
   },
   {
-   "stage": "Gate set (resolved)",
-   "n": 14
+   "stage": "15 eligible = 14 traded + 1 unresolved at cutoff (Arbutus)",
+   "n": 15,
+   "split": [
+    14,
+    1
+   ]
   }
  ],
  "amendments": [
@@ -189,6 +210,7 @@
   {
    "rule": "Strict (Dutch: low end)",
    "G1": 8,
+   "G1_label": "8 eligible = 7 traded + 1 unresolved at cutoff",
    "G2": "€53.02",
    "G3": "−€96.11",
    "verdict": "FAIL"
@@ -196,14 +218,15 @@
   {
    "rule": "Lenient (Dutch: high end)",
    "G1": 12,
+   "G1_label": "12 eligible = 11 traded + 1 unresolved at cutoff",
    "G2": "€50.17",
    "G3": "−€96.11",
    "verdict": "FAIL"
   }
  ],
  "bucket_labels": {
-  "GATE_SET": "Gate set",
-  "UNRESOLVED_AT_CUTOFF": "Unresolved at cutoff",
+  "GATE_SET": "Gate set · traded",
+  "UNRESOLVED_AT_CUTOFF": "Eligible · unresolved at cutoff",
   "TOO_EXPENSIVE_E3": "Too expensive (E3)",
   "PRICE_MISSING": "Price missing",
   "OTC_E4": "OTC (E4)",
