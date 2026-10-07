@@ -1,0 +1,11 @@
+[project]
+name = "honest-bot-lab"
+version = "0.0.0"
+description = "Honest Bot Lab: pre-registered trading research, published honestly."
+requires-python = ">=3.9"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

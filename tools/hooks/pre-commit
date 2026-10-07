@@ -1,0 +1,3 @@
+#!/bin/sh
+# PII guard: staged file names and content, commit identity, UTC timestamps.
+exec python3 "$(git rev-parse --show-toplevel)/tools/pii_guard.py" staged
