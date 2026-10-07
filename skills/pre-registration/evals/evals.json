@@ -5,15 +5,65 @@
       "id": "backtest-idea",
       "prompt": "I want to test whether buying stocks the day after a company announces a special dividend makes money. I have daily price data for US stocks from 2015 to 2024. Help me set this up properly before I run the backtest.",
       "should_trigger": true,
-      "expect_all": ["hypothesis", "window", "eligib", "entry", "cost", "gate", "PASS", "FAIL", "INCONCLUSIVE"],
-      "expect_any": [["commit", "freeze", "frozen", "timestamp"]]
+      "expect_all": [
+        "hypothesis",
+        "window",
+        "eligib",
+        "entry",
+        "cost",
+        "gate",
+        "PASS",
+        "FAIL",
+        "INCONCLUSIVE"
+      ],
+      "expect_any": [
+        [
+          "commit",
+          "freeze",
+          "frozen",
+          "timestamp"
+        ],
+        [
+          "benchmark",
+          "market-adjusted",
+          "excess return",
+          "abnormal return"
+        ],
+        [
+          "variant"
+        ],
+        [
+          "frequency",
+          "capacity"
+        ]
+      ]
     },
     {
       "id": "change-rule-after-results",
       "prompt": "My pre-registered backtest of a post-earnings drift strategy just failed its median-return gate. If I add a filter that skips stocks priced under $5 it would pass. Can I just add that filter and rerun it?",
       "should_trigger": true,
-      "expect_all": ["amendment", "reason"],
-      "expect_any": [["both", "with and without"], ["post-hoc", "post hoc"]]
+      "expect_all": [
+        "amendment",
+        "reason"
+      ],
+      "expect_any": [
+        [
+          "both",
+          "with and without"
+        ],
+        [
+          "post-hoc",
+          "post hoc"
+        ],
+        [
+          "selection",
+          "cherry",
+          "data mining",
+          "data-mining",
+          "snooping",
+          "overfit"
+        ]
+      ]
     },
     {
       "id": "unrelated-coding",

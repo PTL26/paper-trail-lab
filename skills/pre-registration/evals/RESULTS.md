@@ -1,6 +1,6 @@
 # Eval results — pre-registration
 
-Run 2026-10-07 11:54 UTC; model `claude-opus-5-5`, effort `medium`; one run per case.
+Run 2026-10-07 13:19 UTC; model `claude-opus-5-5`, effort `medium`; one run per case.
 
 | Case | Should trigger | Triggered | Result | Notes |
 |---|---|---|---|---|

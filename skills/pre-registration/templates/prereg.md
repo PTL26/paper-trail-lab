@@ -32,6 +32,8 @@ Events whose <deciding date, e.g. first public announcement> falls between <star
 - **Exit — cancelled / withdrawn:** <sale rule>
 - **Exit — partial:** <proration handling>
 - **Sensitivity run:** <e.g. later entry date> (information only)
+- **Variants:** <every variant to be tested — parameters, filters, holding periods; results are
+  reported for all of them, not only the best>
 
 ## 6. Costs (constants)
 <commission per order, fees, FX, slippage — conservative>

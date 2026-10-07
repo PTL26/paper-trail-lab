@@ -6,6 +6,8 @@
 | G2 | Typical result | median net result per event ≥ <amount> | resolved eligible events |
 | G3 | Tail risk | worst single event ≥ <−amount> | resolved eligible events |
 
+- **Long-only:** G2 and G3 use <market-adjusted / excess> returns against <benchmark>, not raw
+  returns.
 - **PASS** = every gate met.
 - **FAIL** = any gate missed.
 - **INCONCLUSIVE** = <e.g. more than 20% of eligible events lack the data needed to price them>,

@@ -40,7 +40,12 @@ offers" is testable; "tenders are good" is not.
   (see Lessons).
 - **Costs:** commissions, fees, FX, slippage — conservative defaults, written as constants.
 - **Gates:** two to four numeric pass/fail thresholds decided now (`templates/gate_table.md`),
-  plus the rule for INCONCLUSIVE (e.g. too much missing data).
+  plus the rule for INCONCLUSIVE (e.g. too much missing data). For long-only strategies, judge
+  returns against a benchmark (market-adjusted or excess return), not against zero. A raw profit
+  that mostly comes from the market going up is not an edge.
+- **Variants:** list every variant you will test (parameters, filters, holding periods) now.
+  Report results for all of them, not only the best. Testing many variants and reporting the
+  winner is selection, not evidence.
 - **Early stop:** a cheap check that can end the study before the expensive part (e.g. too few
   candidates to ever pass a frequency gate).
 - **Validation:** how extracted or labelled data will be checked (sample size, seed, accuracy
@@ -63,8 +68,9 @@ fixed bug, different data source, new bucket — is an **amendment** (`templates
 If someone asks to change a rule after seeing results, do not just change it. Write the amendment,
 keep the original result, and report both.
 
-Pipeline bug fixes (wrong parser, broken input) are still amendments, but they need no "post-hoc"
-label if they do not change any rule's meaning.
+Pipeline bug fixes (wrong parser, broken input) are still amendments. They need no post-hoc label
+only if they do not change any rule's meaning and were decided before seeing their effect on the
+results.
 
 ### 5. Give the verdict — fill in `templates/verdict.md`
 - **PASS:** every gate met.
@@ -86,6 +92,9 @@ clearly separated from the verdict. A clean FAIL is a result. Record the decisio
    every field, a correct "not stated" value can never be supported and gets scored as an error.
    Define in advance how absence is verified (e.g. a deterministic search of the source showing no
    such statement, or a human check) instead of counting it as wrong.
+3. **A profitable trade is not a strategy.** In the example study, trades taken with a sensible
+   entry rule were profitable per event, but there were only a few per year. Include a frequency or
+   capacity gate, so a real but rare edge is not mistaken for something worth building.
 
 ## Output style
 
