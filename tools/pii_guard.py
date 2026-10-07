@@ -147,6 +147,8 @@ def main(argv: List[str]) -> int:
     if argv[:1] == ["files"]:
         hits = []
         for f in argv[1:]:
+            if not Path(f).is_file():  # e.g. a path deleted in this commit
+                continue
             hits += scan_blob(f, Path(f).read_bytes(), deny)
         return _report(hits, "files")
     print(__doc__, file=sys.stderr)
