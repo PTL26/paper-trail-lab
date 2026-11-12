@@ -6,7 +6,7 @@
 set -e
 cd "$(git rev-parse --show-toplevel)"
 git config user.name "Paper Trail Lab"
-git config user.email "hello@papertraillab.invalid"
+git config user.email "355964578+PTL26@users.noreply.github.com"
 git config core.hooksPath tools/hooks
 git config alias.cu '!f() { d=$(date -u +%Y-%m-%dT%H:%M:%S+0000); GIT_AUTHOR_DATE="$d" GIT_COMMITTER_DATE="$d" TZ=UTC git commit "$@"; }; f'
 echo "configured: identity, hooks (tools/hooks), alias 'git cu'"
