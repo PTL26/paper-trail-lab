@@ -63,3 +63,13 @@ def test_workflow_pins_actions_and_publishes_the_assembled_site():
     assert "sh tools/build_site.sh _site" in wf and "path: _site" in wf
     assert "site/**" in wf and "t1-explorer/index.html" in wf
     assert "pages: write" in wf and "id-token: write" in wf
+
+
+def test_no_page_loads_anything_from_a_third_party_host(tmp_path):
+    out = assemble(tmp_path)
+    pages = sorted(out.rglob("*.html"))
+    assert len(pages) == 3
+    for page in pages:
+        html = page.read_text(encoding="utf-8")
+        assert build.external_requests(html) == [], page.relative_to(out)
+        assert "fonts.googleapis.com" not in html and "fonts.gstatic.com" not in html
