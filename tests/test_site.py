@@ -45,7 +45,7 @@ def test_landing_page_content():
     assert "/plugin install pre-registration@paper-trail-lab" in html
     assert ("Honest Arena — a pre-registered forward test of popular open-source AI trading agents — "
             "starts soon.") in html
-    assert "EMAIL SIGN-UP PLACEHOLDER" in html  # replaced by the Substack link later
+    assert "PLACEHOLDER" not in html and "substack.com/embed" not in html
     assert "prefers-color-scheme: dark" in html and 'name="viewport"' in html
 
 
@@ -73,3 +73,15 @@ def test_no_page_loads_anything_from_a_third_party_host(tmp_path):
         html = page.read_text(encoding="utf-8")
         assert build.external_requests(html) == [], page.relative_to(out)
         assert "fonts.googleapis.com" not in html and "fonts.gstatic.com" not in html
+
+
+SUBSCRIBE = "https://papertraillab.substack.com/subscribe"
+
+
+def test_every_page_links_to_email_sign_up(tmp_path):
+    out = assemble(tmp_path)
+    for rel in ("index.html", "t1-explorer/index.html", "lie-detector/index.html"):
+        html = (out / rel).read_text(encoding="utf-8")
+        assert f'href="{SUBSCRIBE}"' in html, rel
+        assert "Get updates by email — free" in html, rel
+        assert "<iframe" not in html, rel

@@ -48,7 +48,10 @@ a.card:hover, a.card:focus-visible { border-color: var(--accent); }
 pre { margin: 10px 0 0; background: var(--code); border-radius: 8px; padding: 12px 14px; overflow-x: auto;
   font: 13.5px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--ink); }
 .arena { border-left: 3px solid var(--accent); padding: 4px 0 4px 14px; margin: 0; }
-.signup { border: 1px dashed var(--line); border-radius: 12px; padding: 16px 20px; color: var(--ink-2); font-size: 15px; margin-top: 14px; }
+.signup { margin: 18px 0 0; }
+.button { display: inline-block; background: var(--accent); color: var(--bg); text-decoration: none; font-weight: 600;
+  font-size: 15px; padding: 11px 18px; border-radius: 8px; }
+.button:hover, .button:focus-visible { filter: brightness(1.1); }
 footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-2); }
 </style>
 </head>
@@ -87,9 +90,7 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line);
   <h2 class="section">Coming next</h2>
   <p class="arena">Honest Arena — a pre-registered forward test of popular open-source AI trading agents — starts soon.</p>
 
-  <!-- EMAIL SIGN-UP PLACEHOLDER: replace this block with the Substack sign-up link when it exists. -->
-  <div class="signup" id="signup">Email updates: sign-up coming soon.</div>
-  <!-- /EMAIL SIGN-UP PLACEHOLDER -->
+  <p class="signup" id="signup"><a class="button" href="https://papertraillab.substack.com/subscribe" rel="noopener">Get updates by email — free</a></p>
 
   <footer>
     <div><b>Paper Trail Lab</b> · Content and data: CC BY 4.0 · Code: MIT ·
