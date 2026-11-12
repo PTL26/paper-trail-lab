@@ -4,26 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<meta name="description" content="Trading ideas, tested in public — including the ones that fail.">
-<title>Honest Bot Lab</title>
+<meta name="description" content="Independent, pre-registered testing of AI trading tools. Rules fixed before results. No investment advice.">
+<title>Paper Trail Lab</title>
 <link rel="icon" href="data:,">
 <style>
 :root {
   color-scheme: light;
   --bg: #f7f6f2; --surface: #fcfcfb; --line: #e2e0d9; --ink: #0b0b0b; --ink-2: #52514e; --ink-3: #75736c;
-  --accent: #1c5cab; --bad: #d03b3b;
+  --accent: #1c5cab; --bad: #d03b3b; --code: #efede7;
 }
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
     color-scheme: dark;
     --bg: #121211; --surface: #1a1a19; --line: #34332f; --ink: #ffffff; --ink-2: #c3c2b7; --ink-3: #9a988f;
-    --accent: #86b6ef; --bad: #e66767;
+    --accent: #86b6ef; --bad: #e66767; --code: #232321;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #121211; --surface: #1a1a19; --line: #34332f; --ink: #ffffff; --ink-2: #c3c2b7; --ink-3: #9a988f;
-  --accent: #86b6ef; --bad: #e66767;
+  --accent: #86b6ef; --bad: #e66767; --code: #232321;
 }
 * { box-sizing: border-box; }
 body {
@@ -35,43 +35,65 @@ body {
 a { color: var(--accent); }
 .eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
 h1 { font-size: clamp(28px, 6vw, 40px); line-height: 1.15; margin: 8px 0 12px; letter-spacing: -0.015em; }
+h2.section { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin: 40px 0 12px; }
 .lede { color: var(--ink-2); margin: 0 0 32px; }
 .cards { display: grid; gap: 14px; }
 .card { display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
-  padding: 18px 20px; color: inherit; text-decoration: none; }
-.card:hover, .card:focus-visible { border-color: var(--accent); }
-.card h2 { font-size: 18px; margin: 4px 0 4px; color: var(--accent); }
+  padding: 18px 20px; color: inherit; text-decoration: none; min-width: 0; }
+a.card:hover, a.card:focus-visible { border-color: var(--accent); }
+.card h3 { font-size: 18px; margin: 4px 0 4px; color: var(--accent); }
 .card p { margin: 0; color: var(--ink-2); font-size: 15px; }
 .tag { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-3); }
 .tag.fail { color: var(--bad); }
+pre { margin: 10px 0 0; background: var(--code); border-radius: 8px; padding: 12px 14px; overflow-x: auto;
+  font: 13.5px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--ink); }
+.arena { border-left: 3px solid var(--accent); padding: 4px 0 4px 14px; margin: 0; }
+.signup { border: 1px dashed var(--line); border-radius: 12px; padding: 16px 20px; color: var(--ink-2); font-size: 15px; margin-top: 14px; }
 footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-2); }
 </style>
 </head>
 <body>
 <main class="wrap">
-  <div class="eyebrow">Honest Bot Lab</div>
-  <h1>Trading ideas, tested in public — including the ones that fail.</h1>
-  <p class="lede">Every study is pre-registered: the question, the data window, the rules and the pass/fail
-    gates are fixed before any data is seen. Changes after that are amendments with a stated reason, and
-    results are reported with and without them.</p>
+  <div class="eyebrow">Paper Trail Lab</div>
+  <h1>AI trading tools, tested in public — including the ones that fail.</h1>
+  <p class="lede">Paper Trail Lab independently tests AI trading tools and trading ideas. For every test,
+    the question, the data, the rules and the pass/fail gates are written down and published before any
+    result is seen, and the verdict follows those rules: PASS, FAIL or INCONCLUSIVE. Nothing here is
+    investment advice.</p>
 
   <div class="cards">
     <a class="card" href="t1-explorer/">
       <span class="tag fail">Study T1 · ✗ Verdict: FAIL</span>
-      <h2>T1 explorer: small-holder tender offers and cash-outs</h2>
+      <h3>T1 explorer: small-holder tender offers and cash-outs</h3>
       <p>Would a €2,000 account have made money on odd-lot tender offers and reverse-split cash-outs?
         Every event, every gate and every amendment, each linked to its SEC filing.</p>
     </a>
-    <a class="card" href="https://github.com/honestbotlab/honest-bot-lab/tree/main/skills/pre-registration">
-      <span class="tag">Free skill</span>
-      <h2>Pre-registration skill for Claude</h2>
-      <p>Freeze the hypothesis, rules and gates before you look at the data; handle every later change as
-        an amendment; end with PASS, FAIL or INCONCLUSIVE.</p>
+    <a class="card" href="lie-detector/">
+      <span class="tag">Free tool</span>
+      <h3>Backtest Lie Detector</h3>
+      <p>Paste your trades and a benchmark to see how much of a backtest's edge is only the market going
+        up while you held. Runs in your browser; your trades are not uploaded.</p>
     </a>
+    <div class="card">
+      <span class="tag">Free Claude Code plugin</span>
+      <h3><a href="https://github.com/PTL26/paper-trail-lab/tree/main/skills/pre-registration">Pre-registration skill</a></h3>
+      <p>Freeze the hypothesis, rules and gates before you look at the data; handle every later change as
+        an amendment; end with PASS, FAIL or INCONCLUSIVE. Install in Claude Code:</p>
+<pre><code>/plugin marketplace add PTL26/paper-trail-lab
+/plugin install pre-registration@paper-trail-lab</code></pre>
+    </div>
   </div>
 
+  <h2 class="section">Coming next</h2>
+  <p class="arena">Honest Arena — a pre-registered forward test of popular open-source AI trading agents — starts soon.</p>
+
+  <!-- EMAIL SIGN-UP PLACEHOLDER: replace this block with the Substack sign-up link when it exists. -->
+  <div class="signup" id="signup">Email updates: sign-up coming soon.</div>
+  <!-- /EMAIL SIGN-UP PLACEHOLDER -->
+
   <footer>
-    <div><b>Honest Bot Lab</b> · Content and data: CC BY 4.0 · Code: MIT</div>
+    <div><b>Paper Trail Lab</b> · Content and data: CC BY 4.0 · Code: MIT ·
+      <a href="https://github.com/PTL26/paper-trail-lab">Source</a></div>
     <div>Research and engineering only. Not investment advice.</div>
   </footer>
 </main>

@@ -1,0 +1,16 @@
+{
+  "name": "paper-trail-lab",
+  "description": "Free Claude Code plugins from Paper Trail Lab: independent, pre-registered testing of AI trading tools.",
+  "owner": {
+    "name": "Paper Trail Lab",
+    "url": "https://github.com/PTL26"
+  },
+  "plugins": [
+    {
+      "name": "pre-registration",
+      "source": "./skills/pre-registration",
+      "description": "Freeze the hypothesis, rules and pass/fail gates before you look at the data; handle later changes as amendments; end with PASS, FAIL or INCONCLUSIVE.",
+      "category": "research"
+    }
+  ]
+}

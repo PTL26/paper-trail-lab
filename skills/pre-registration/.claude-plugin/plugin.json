@@ -1,0 +1,14 @@
+{
+  "name": "pre-registration",
+  "displayName": "Pre-registration",
+  "version": "0.1.0",
+  "description": "Run a pre-registered test of a trading or research hypothesis: freeze the rules and gates before the data, treat later changes as amendments, end with PASS, FAIL or INCONCLUSIVE.",
+  "author": {
+    "name": "Paper Trail Lab",
+    "url": "https://github.com/PTL26"
+  },
+  "homepage": "https://ptl26.github.io/paper-trail-lab/",
+  "repository": "https://github.com/PTL26/paper-trail-lab",
+  "license": "MIT",
+  "keywords": ["pre-registration", "backtesting", "research", "trading", "overfitting"]
+}

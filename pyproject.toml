@@ -1,7 +1,7 @@
 [project]
-name = "honest-bot-lab"
+name = "paper-trail-lab"
 version = "0.0.0"
-description = "Honest Bot Lab: pre-registered trading research, published honestly."
+description = "Paper Trail Lab: independent, pre-registered testing of AI trading tools."
 requires-python = ">=3.9"
 
 [dependency-groups]

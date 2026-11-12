@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Paste your trades and a benchmark to see how much of a backtest's edge is just the market. Runs in your browser.">
+<title>Backtest Lie Detector</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,600..900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+/* Layout: a lab bench. Left, the specimen tray (inputs, flat, quiet). Right, one report sheet
+   with the verdict stamped on it. The stamp is the only loud thing on the page. */
+:root {
+  --bg: #eef1f5;
+  --sheet: #fbfcfd;
+  --field: #f4f6f9;
+  --ink: #10151f;
+  --ink-2: #47505f;
+  --muted: #6f7888;
+  --line: #dde2ea;
+  --axis: #b8c0cc;
+  --alpha: #2a78d6;      /* series: what is left after the market */
+  --market: #eb6834;     /* series: the market's part */
+  --raw: #98a1b0;        /* neutral: the unadjusted average */
+  --good: #0ca30c;
+  --warn: #fab219;
+  --serious: #ec835a;
+  --crit: #d03b3b;
+  --display: "Archivo", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1116; --sheet: #161a21; --field: #10141a; --ink: #eceff4; --ink-2: #b9c0cc;
+    --muted: #8f98a8; --line: #262c37; --axis: #3a4250; --alpha: #3987e5; --market: #d95926;
+    --raw: #5c6675; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1116; --sheet: #161a21; --field: #10141a; --ink: #eceff4; --ink-2: #b9c0cc;
+  --muted: #8f98a8; --line: #262c37; --axis: #3a4250; --alpha: #3987e5; --market: #d95926;
+  --raw: #5c6675; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 64px;
+}
+.wrap { max-width: 1140px; margin-inline: auto; display: grid; gap: 28px; }
+
+/* Masthead, on graph paper */
+.mast { position: relative; padding-block: 22px 26px; padding-inline: 2px; }
+.mast::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 22px 22px;
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 30%, transparent 85%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 30%, transparent 85%);
+}
+.mast-inner { position: relative; display: grid; gap: 10px; }
+.eyebrow {
+  font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-2);
+}
+h1 {
+  font-family: var(--display); font-stretch: 122%; font-weight: 800;
+  font-size: clamp(30px, 5.2vw, 50px); line-height: 1.02; letter-spacing: -.01em;
+  margin: 0; text-wrap: balance;
+}
+.lede { font-size: 17px; max-width: 58ch; margin: 0; color: var(--ink); }
+.private { font-size: 13px; color: var(--ink-2); margin: 0; }
+
+.bench { display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 940px) { .bench { grid-template-columns: minmax(0, 360px) minmax(0, 1fr); } }
+
+/* Specimen tray */
+.tray { display: grid; gap: 22px; min-width: 0; }
+.tray h2, .sheet h2 {
+  font-family: var(--mono); font-weight: 600; font-size: 12px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink-2); margin: 0;
+}
+.field { display: grid; gap: 6px; min-width: 0; }
+.field label, .field .lab { font-weight: 600; font-size: 14px; }
+.hint { font-size: 13px; color: var(--ink-2); margin: 0; }
+textarea, select, input[type="number"] {
+  font-family: var(--mono); font-size: 12.5px; color: var(--ink);
+  background: var(--field); border: 1px solid var(--line); border-radius: 4px;
+  padding: 9px 10px; width: 100%; min-width: 0;
+}
+select, input[type="number"] { font-family: var(--body); font-size: 14px; }
+textarea { height: 132px; resize: vertical; line-height: 1.45; white-space: pre; overflow: auto; }
+input[type="file"] { font-family: var(--body); font-size: 13px; color: var(--ink-2); max-width: 100%; }
+:focus-visible { outline: 2px solid var(--alpha); outline-offset: 2px; }
+.settings { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+button {
+  font-family: var(--body); font-size: 14px; font-weight: 600; cursor: pointer;
+  border-radius: 4px; padding: 10px 16px; border: 1px solid var(--ink);
+}
+.go { background: var(--ink); color: var(--sheet); }
+.ghost { background: transparent; color: var(--ink); border-color: var(--axis); }
+button:hover { filter: brightness(1.12); }
+.ghost:hover { border-color: var(--ink); filter: none; }
+.msg { font-size: 13px; margin: 0; color: var(--ink); border-left: 3px solid var(--crit); padding: 6px 10px; background: var(--field); }
+
+/* Report sheet */
+.sheet {
+  background: var(--sheet); border: 1px solid var(--line); border-radius: 6px;
+  padding: clamp(18px, 3vw, 30px); display: grid; gap: 26px; min-width: 0;
+}
+.casebar {
+  display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; justify-content: space-between;
+  font-family: var(--mono); font-size: 12px; color: var(--ink-2);
+  padding-bottom: 12px; border-bottom: 1px solid var(--line);
+}
+.example-tag {
+  font-family: var(--mono); font-size: 12px; color: var(--ink);
+  border: 1px dashed var(--axis); border-radius: 3px; padding: 2px 8px;
+}
+.verdict { display: grid; gap: 16px; justify-items: start; }
+.stamp {
+  --s: var(--warn);
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--display); font-stretch: 118%; font-weight: 800;
+  font-size: clamp(19px, 3.2vw, 28px); line-height: 1; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--ink); padding: 12px 16px 11px;
+  border: 3px solid var(--s); outline: 1px solid var(--s); outline-offset: 3px; border-radius: 3px;
+  background: color-mix(in srgb, var(--s) 12%, transparent);
+  transform: rotate(-1.6deg); margin: 6px 4px 2px;
+}
+.stamp svg { width: 1.05em; height: 1.05em; flex: none; }
+.stamp svg * { stroke: var(--s); fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.stamp.good { --s: var(--good); } .stamp.warn { --s: var(--warn); }
+.stamp.serious { --s: var(--serious); } .stamp.crit { --s: var(--crit); }
+@media (prefers-reduced-motion: no-preference) {
+  .stamp.hit { animation: hit .22s cubic-bezier(.2,.9,.3,1.2); }
+  @keyframes hit { from { transform: rotate(-1.6deg) scale(1.18); } to { transform: rotate(-1.6deg) scale(1); } }
+}
+.finding { font-size: clamp(17px, 2vw, 20px); line-height: 1.4; max-width: 60ch; margin: 0; text-wrap: pretty; }
+.finding b { font-weight: 600; }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0; border-block: 1px solid var(--line); }
+.tile { padding: 14px 16px 14px 0; display: grid; gap: 2px; align-content: start; min-width: 0; }
+.tile + .tile { padding-left: 16px; border-left: 1px solid var(--line); }
+.tile .k { font-size: 13px; color: var(--ink-2); }
+.tile .v { font-family: var(--display); font-stretch: 110%; font-weight: 700; font-size: 26px; line-height: 1.15; }
+.tile .s { font-family: var(--mono); font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) {
+  .tiles { grid-template-columns: 1fr 1fr; }
+  .tile { padding: 12px 10px 12px 0; }
+  .tile + .tile { padding-left: 10px; }
+  .tile:nth-child(odd) { padding-left: 0; border-left: 0; }
+  .tile:nth-child(n+3) { border-top: 1px solid var(--line); }
+}
+
+.block { display: grid; gap: 10px; min-width: 0; }
+.block p { margin: 0; }
+.cap { font-size: 13px; color: var(--ink-2); max-width: 70ch; }
+.chart { position: relative; min-width: 0; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--ink-2); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.sw-raw { background: var(--raw); } .sw-market { background: var(--market); } .sw-alpha { background: var(--alpha); }
+
+/* SVG marks, colored through tokens */
+.t-lab { font-family: var(--body); font-size: 13px; fill: var(--ink-2); }
+.t-val { font-family: var(--mono); font-size: 13px; fill: var(--ink); font-variant-numeric: tabular-nums; }
+.t-tick { font-family: var(--mono); font-size: 11px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+.t-axis { font-family: var(--body); font-size: 12px; fill: var(--ink-2); }
+.grid { stroke: var(--line); stroke-width: 1; }
+.base { stroke: var(--axis); stroke-width: 1; }
+.m-raw { fill: var(--raw); } .m-market { fill: var(--market); } .m-alpha { fill: var(--alpha); }
+.whisk { stroke: var(--ink); stroke-width: 1.5; fill: none; }
+.dot { fill: var(--alpha); stroke: var(--sheet); stroke-width: 1; opacity: .78; }
+.dot.on { opacity: 1; stroke-width: 2; }
+.fit { stroke: var(--ink); stroke-width: 2; fill: none; stroke-linecap: round; }
+.tip {
+  position: absolute; pointer-events: none; z-index: 2; font-size: 12.5px; line-height: 1.4;
+  background: var(--ink); color: var(--sheet); padding: 7px 9px; border-radius: 4px;
+  font-family: var(--mono); white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+
+.scroll { overflow-x: auto; min-width: 0; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: right; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+th { font-weight: 600; color: var(--ink-2); font-size: 12.5px; }
+td { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+td .bar { display: inline-block; height: 8px; border-radius: 2px; background: var(--alpha); vertical-align: middle; }
+td .neg { background: var(--raw); }
+.sign { display: inline-block; width: 1.2em; text-align: center; color: var(--ink-2); }
+
+.notes { display: grid; gap: 8px; padding: 0; margin: 0; list-style: none; }
+.notes li { padding-left: 16px; position: relative; max-width: 70ch; }
+.notes li::before { content: ""; position: absolute; left: 0; top: .62em; width: 7px; height: 2px; background: var(--ink-2); }
+.blind { border: 1px dashed var(--axis); border-radius: 4px; padding: 14px 16px; display: grid; gap: 6px; }
+.blind p { margin: 0; max-width: 70ch; }
+details summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+details .scroll { max-height: 320px; overflow: auto; margin-top: 10px; }
+.foot { font-size: 13px; color: var(--ink-2); display: grid; gap: 6px; max-width: 78ch; }
+.foot p { margin: 0; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="mast">
+    <div class="mast-inner">
+      <div class="eyebrow">Paper Trail Lab / free tool</div>
+      <h1>Backtest Lie Detector</h1>
+      <p class="lede">Your backtest says you beat the market. This test measures how much of that edge is only the market going up while you held.</p>
+      <p class="private">Runs in your browser. Your trades are not uploaded anywhere.</p>
+    </div>
+  </header>
+
+  <div class="bench">
+    <form class="tray" id="tray" novalidate>
+      <h2>Specimen</h2>
+      <div class="field">
+        <label for="trades-text">Your trades</label>
+        <p class="hint">One row per closed trade: <code>entry_date, exit_date, return_pct</code>. Use returns after costs.</p>
+        <textarea id="trades-text" spellcheck="false" aria-describedby="trades-hint"></textarea>
+        <input type="file" id="trades-file" accept=".csv,.txt,text/csv" aria-label="Load trades from a CSV file">
+      </div>
+      <div class="field">
+        <label for="bench-text">Benchmark closes</label>
+        <p class="hint">Daily closes of what you would have held instead: <code>date, close</code>. For US stocks, an S&amp;P 500 index fund's adjusted close.</p>
+        <textarea id="bench-text" spellcheck="false"></textarea>
+        <input type="file" id="bench-file" accept=".csv,.txt,text/csv" aria-label="Load benchmark closes from a CSV file">
+      </div>
+      <div class="settings">
+        <div class="field">
+          <label for="unit">Returns are written as</label>
+          <select id="unit">
+            <option value="pct">Percent (1.5 = 1.5%)</option>
+            <option value="dec">Decimal (0.015 = 1.5%)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="entry-at">Trades are entered</label>
+          <select id="entry-at">
+            <option value="close">At the close</option>
+            <option value="open">At the open</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="gate">Bar to clear, % per trade</label>
+          <input type="number" id="gate" value="0" step="0.05">
+        </div>
+      </div>
+      <p class="hint">Alpha has to beat the bar with 95% confidence. Keep 0 if your returns already include costs. Add a margin if they do not.</p>
+      <div class="actions">
+        <button type="submit" class="go" id="run">Run the test</button>
+        <button type="button" class="ghost" id="load-example">Load the example</button>
+      </div>
+      <p class="msg" id="msg" role="alert" hidden></p>
+    </form>
+
+    <section class="sheet" id="report" aria-live="polite">
+      <div class="casebar">
+        <span id="case-left">Report</span>
+        <span class="example-tag" id="example-tag" hidden>Example data: synthetic trades and a synthetic index, not real results</span>
+      </div>
+
+      <div class="verdict">
+        <div class="stamp warn" id="stamp"><span id="stamp-icon"></span><span id="stamp-text">Waiting for trades</span></div>
+        <p class="finding" id="finding">Paste your trades and a benchmark, then run the test.</p>
+      </div>
+
+      <div class="tiles" id="tiles"></div>
+
+      <div class="block">
+        <h2>Where the average trade comes from</h2>
+        <div class="chart" id="bars"></div>
+        <div class="legend" aria-hidden="true">
+          <span><i class="sw-raw"></i>Average trade, as reported</span>
+          <span><i class="sw-market"></i>The market's part</span>
+          <span><i class="sw-alpha"></i>What is left: alpha</span>
+        </div>
+        <p class="cap" id="bars-cap"></p>
+      </div>
+
+      <div class="block">
+        <h2>Every trade against the market</h2>
+        <div class="chart" id="scatter"></div>
+        <p class="cap" id="scatter-cap"></p>
+      </div>
+
+      <div class="block">
+        <h2>Year by year</h2>
+        <div class="scroll"><table id="years"></table></div>
+        <p class="cap">A real edge shows up in most years. An average carried by one strong year is a warning.</p>
+      </div>
+
+      <div class="block">
+        <h2>Also in this sample</h2>
+        <ul class="notes" id="notes"></ul>
+      </div>
+
+      <div class="blind">
+        <h2>What this test cannot see</h2>
+        <p>It only sees returns. It cannot detect look-ahead bugs in your code, survivorship in your stock universe, or fills you would not have got live. Passing here is necessary. It is not sufficient.</p>
+      </div>
+
+      <details id="rows-wrap">
+        <summary>Matched trades</summary>
+        <div class="scroll"><table id="rows"></table></div>
+      </details>
+
+      <div class="foot">
+        <p><b>Method.</b> Least-squares fit of each trade's return on the benchmark's return over the same holding period. Beta is the slope, alpha is what is left at zero market move. The 95% range comes from 2,000 bootstrap resamples drawn by entry week, so trades that overlap in time stay together. The same input always gives the same result.</p>
+        <p>A testing tool, not investment advice.</p>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script id="core">
+/* Pure logic: no DOM. Parsing, matching, regression, bootstrap, verdict. */
+const Core = (() => {
+  function rng(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function parseDay(s) {
+    s = String(s || '').trim().replace(/^"|"$/g, '');
+    let m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+    if (m) return Math.floor(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 864e5);
+    m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/);
+    if (m) {
+      let a = +m[1], b = +m[2];
+      // day first unless the second number cannot be a month
+      let day = a, mon = b;
+      if (b > 12 && a <= 12) { day = b; mon = a; }
+      return Math.floor(Date.UTC(+m[3], mon - 1, day) / 864e5);
+    }
+    return NaN;
+  }
+  const iso = d => new Date(d * 864e5).toISOString().slice(0, 10);
+
+  function splitLine(line, delim) {
+    const out = []; let cur = '', q = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { if (q && line[i + 1] === '"') { cur += '"'; i++; } else q = !q; }
+      else if (ch === delim && !q) { out.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    out.push(cur);
+    return out.map(s => s.trim());
+  }
+  function table(text) {
+    const lines = String(text || '').split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+    if (!lines.length) return { delim: ',', head: null, rows: [] };
+    const first = lines[0];
+    const count = c => first.split(c).length - 1;
+    let delim = ',';
+    if (count('\t') > count(delim)) delim = '\t';
+    if (count(';') > count(delim)) delim = ';';
+    const rows = lines.map(l => splitLine(l, delim));
+    let head = null;
+    if (isNaN(parseDay(rows[0][0]))) head = rows.shift().map(h => h.toLowerCase().replace(/[^a-z0-9]+/g, '_'));
+    return { delim, head, rows };
+  }
+  function num(s, delim) {
+    s = String(s == null ? '' : s).replace(/["'%\s]/g, '');
+    if (s === '') return NaN;
+    if (delim === ';' || (/^-?\d+,\d+$/.test(s) && delim !== ',')) s = s.replace(/\./g, '').replace(',', '.');
+    else s = s.replace(/,/g, '');
+    return Number(s);
+  }
+  function col(head, names, fallback) {
+    if (!head) return fallback;
+    for (const n of names) { const i = head.findIndex(h => h === n); if (i >= 0) return i; }
+    for (const n of names) { const i = head.findIndex(h => h.includes(n)); if (i >= 0) return i; }
+    return fallback;
+  }
+  function readTrades(text, unit) {
+    const t = table(text);
+    if (!t.rows.length) return { trades: [], bad: 0, error: 'No trades found. Paste rows as entry_date, exit_date, return_pct.' };
+    const width = Math.max(...t.rows.map(r => r.length));
+    if (width < 3) return { trades: [], bad: 0, error: 'Trades need three columns: entry_date, exit_date, return_pct.' };
+    const ie = col(t.head, ['entry_date', 'entry', 'open_date', 'date_in', 'buy_date'], 0);
+    const ix = col(t.head, ['exit_date', 'exit', 'close_date', 'date_out', 'sell_date'], 1);
+    const ir = col(t.head, ['return_pct', 'return', 'ret', 'pnl_pct', 'pct', 'profit'], 2);
+    const k = unit === 'dec' ? 100 : 1;
+    const trades = []; let bad = 0;
+    for (const r of t.rows) {
+      const e = parseDay(r[ie]), x = parseDay(r[ix]), v = num(r[ir], t.delim);
+      if (isNaN(e) || isNaN(x) || !isFinite(v) || x < e) { bad++; continue; }
+      trades.push({ e, x, r: v * k });
+    }
+    if (!trades.length) return { trades, bad, error: 'Could not read any trade row. Dates should look like 2024-03-18.' };
+    return { trades, bad, error: null };
+  }
+  function readBench(text) {
+    const t = table(text);
+    if (!t.rows.length) return { bench: [], error: 'No benchmark found. Paste rows as date, close.' };
+    const width = Math.max(...t.rows.map(r => r.length));
+    if (width < 2) return { bench: [], error: 'The benchmark needs two columns: date, close.' };
+    const id = col(t.head, ['date', 'time', 'day'], 0);
+    const ic = col(t.head, ['adj_close', 'adjusted_close', 'close', 'price', 'value'], width - 1);
+    const seen = new Map();
+    for (const r of t.rows) {
+      const d = parseDay(r[id]), c = num(r[ic], t.delim);
+      if (!isNaN(d) && isFinite(c) && c > 0) seen.set(d, c);
+    }
+    const bench = [...seen].map(([d, c]) => ({ d, c })).sort((a, b) => a.d - b.d);
+    if (bench.length < 2) return { bench, error: 'Could not read the benchmark. Rows should look like 2024-03-18, 5149.42.' };
+    return { bench, error: null };
+  }
+  // last close on or before `day` (strict: before `day`), no older than 7 days
+  function closeAt(bench, day, strict) {
+    let lo = 0, hi = bench.length - 1, at = -1;
+    const lim = strict ? day - 1 : day;
+    while (lo <= hi) { const mid = (lo + hi) >> 1; if (bench[mid].d <= lim) { at = mid; lo = mid + 1; } else hi = mid - 1; }
+    if (at < 0 || lim - bench[at].d > 7) return NaN;
+    return bench[at].c;
+  }
+  function pair(trades, bench, entryAt) {
+    const pairs = []; let out = 0;
+    for (const t of trades) {
+      const ce = closeAt(bench, t.e, entryAt === 'open'), cx = closeAt(bench, t.x, false);
+      if (!isFinite(ce) || !isFinite(cx)) { out++; continue; }
+      pairs.push({ e: t.e, x: t.x, r: t.r, m: (cx / ce - 1) * 100 });
+    }
+    return { pairs, out };
+  }
+  function fit(n, sm, sr, smm, smr) {
+    const mm = sm / n, mr = sr / n;
+    const v = smm / n - mm * mm, c = smr / n - mm * mr;
+    const beta = v > 1e-12 ? c / v : 0;
+    return { beta, alpha: mr - beta * mm, mm, mr };
+  }
+  function ols(pairs) {
+    let sm = 0, sr = 0, smm = 0, smr = 0;
+    for (const p of pairs) { sm += p.m; sr += p.r; smm += p.m * p.m; smr += p.m * p.r; }
+    return fit(pairs.length, sm, sr, smm, smr);
+  }
+  const q = (sorted, p) => {
+    const i = (sorted.length - 1) * p, a = Math.floor(i), b = Math.ceil(i);
+    return sorted[a] + (sorted[b] - sorted[a]) * (i - a);
+  };
+  function analyze(pairs, opts) {
+    const gate = +opts.gate || 0, B = opts.B || 2000, n = pairs.length;
+    const base = ols(pairs);
+    // clusters: entry week, Monday to Sunday
+    const cl = new Map();
+    for (const p of pairs) {
+      const key = Math.floor((p.e + 3) / 7);
+      let c = cl.get(key); if (!c) { c = [0, 0, 0, 0, 0]; cl.set(key, c); }
+      c[0]++; c[1] += p.m; c[2] += p.r; c[3] += p.m * p.m; c[4] += p.m * p.r;
+    }
+    const C = [...cl.values()], K = C.length, rand = rng(opts.seed || 20261109);
+    const al = [], be = [];
+    for (let b = 0; b < B; b++) {
+      let s0 = 0, s1 = 0, s2 = 0, s3 = 0, s4 = 0;
+      for (let k = 0; k < K; k++) { const c = C[Math.floor(rand() * K)]; s0 += c[0]; s1 += c[1]; s2 += c[2]; s3 += c[3]; s4 += c[4]; }
+      const f = fit(s0, s1, s2, s3, s4); al.push(f.alpha); be.push(f.beta);
+    }
+    al.sort((a, b) => a - b); be.sort((a, b) => a - b);
+    const lo = q(al, .025), hi = q(al, .975);
+    const mean = al.reduce((s, v) => s + v, 0) / B;
+    const se = Math.sqrt(al.reduce((s, v) => s + (v - mean) * (v - mean), 0) / (B - 1));
+    const marketPart = base.beta * base.mm;
+    const share = base.mr > 0 ? marketPart / base.mr : NaN;
+    // by entry year
+    const ym = new Map();
+    for (const p of pairs) {
+      const y = new Date(p.e * 864e5).getUTCFullYear();
+      let v = ym.get(y); if (!v) { v = { y, n: 0, sr: 0, sm: 0 }; ym.set(y, v); }
+      v.n++; v.sr += p.r; v.sm += p.m;
+    }
+    const years = [...ym.values()].sort((a, b) => a.y - b.y).map(v => {
+      const raw = v.sr / v.n, mkt = base.beta * v.sm / v.n;
+      return { y: v.y, n: v.n, raw, mkt, alpha: raw - mkt };
+    });
+    // concentration: five best trades
+    const sorted = [...pairs].sort((a, b) => b.r - a.r);
+    const total = pairs.reduce((s, p) => s + p.r, 0);
+    const top5 = sorted.slice(0, 5).reduce((s, p) => s + p.r, 0);
+    const ex5 = n > 10 ? ols(sorted.slice(5)) : null;
+    let need = NaN;
+    if (base.alpha > gate && lo <= gate) need = Math.ceil(n * Math.pow(1.96 * se / (base.alpha - gate), 2));
+    const res = {
+      n, weeks: K, gate, beta: base.beta, betaLo: q(be, .025), betaHi: q(be, .975),
+      raw: base.mr, mktMove: base.mm, marketPart, alpha: base.alpha, lo, hi, se, share,
+      years, top5Share: total > 0 ? top5 / total : NaN, alphaEx5: ex5 ? ex5.alpha : NaN, need,
+      from: Math.min(...pairs.map(p => p.e)), to: Math.max(...pairs.map(p => p.x))
+    };
+    res.verdict = verdict(res);
+    return res;
+  }
+  function verdict(r) {
+    if (r.n < 30) return 'few';
+    if (r.lo > r.gate) return 'pass';
+    if (r.hi < r.gate) return 'none';
+    if (r.share >= 0.5) return 'market';
+    return 'open';
+  }
+  // Synthetic example: an index with one down year, and trades that mostly ride it.
+  function example(seed) {
+    const rand = rng(seed);
+    const gauss = () => { let u = 0, v = 0; while (!u) u = rand(); v = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+    const drift = { 2021: .22, 2022: -.16, 2023: .20, 2024: .22, 2025: .14 };
+    const days = []; let c = 3700;
+    const d0 = parseDay('2021-01-04'), d1 = parseDay('2025-12-31');
+    for (let d = d0; d <= d1; d++) {
+      const wd = new Date(d * 864e5).getUTCDay(); if (wd === 0 || wd === 6) continue;
+      const y = new Date(d * 864e5).getUTCFullYear();
+      c *= Math.exp(drift[y] / 252 - 0.5 * 0.0101 * 0.0101 + 0.0101 * gauss());
+      days.push({ d, c });
+    }
+    const trades = [];
+    for (let i = 0; i < 640; i++) {
+      const a = Math.floor(rand() * (days.length - 14)), hold = 5 + Math.floor(rand() * 8);
+      const m = (days[a + hold].c / days[a].c - 1) * 100;
+      trades.push({ e: days[a].d, x: days[a + hold].d, r: 0.12 + 0.85 * m + 4.5 * gauss() });
+    }
+    trades.sort((p, q2) => p.e - q2.e);
+    return {
+      trades: 'entry_date,exit_date,return_pct\n' + trades.map(t => `${iso(t.e)},${iso(t.x)},${t.r.toFixed(2)}`).join('\n'),
+      bench: 'date,close\n' + days.map(p => `${iso(p.d)},${p.c.toFixed(2)}`).join('\n')
+    };
+  }
+  return { readTrades, readBench, pair, analyze, example, iso, parseDay };
+})();
+if (typeof module !== 'undefined') module.exports = Core;
+</script>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const EXAMPLE_SEED = 83;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const pct = (v, d = 2) => !isFinite(v) ? 'n/a' : (v < 0 ? '−' : '+') + Math.abs(v).toFixed(d) + '%';
+  const plain = (v, d = 2) => !isFinite(v) ? 'n/a' : (v < 0 ? '−' : '') + Math.abs(v).toFixed(d);
+  const int = v => Math.round(v).toLocaleString('en-US');
+  const ICON = {
+    good: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>',
+    warn: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v9"/><path d="M12 19v.5"/></svg>',
+    serious: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5L21.5 20h-19z"/><path d="M12 10v4.5"/></svg>',
+    crit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>'
+  };
+  let last = null, isExample = false;
+
+  function ticks(lo, hi, want) {
+    const span = hi - lo || 1, raw = span / want, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw) || raw;
+    const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-6; v += step) out.push(Math.abs(v) < step * 1e-6 ? 0 : v);
+    return { out, step };
+  }
+  const dec = step => step >= 1 ? 0 : step >= 0.1 ? 1 : 2;
+
+  function showError(text) { const m = $('msg'); m.textContent = text; m.hidden = false; }
+
+  function run(fromUser) {
+    $('msg').hidden = true;
+    const t = Core.readTrades($('trades-text').value, $('unit').value);
+    if (t.error) return showError(t.error);
+    const b = Core.readBench($('bench-text').value);
+    if (b.error) return showError(b.error);
+    const pr = Core.pair(t.trades, b.bench, $('entry-at').value);
+    if (pr.pairs.length < 5) return showError('Only ' + pr.pairs.length + ' trades fall inside the benchmark dates. Check that both files cover the same period.');
+    const res = Core.analyze(pr.pairs, { gate: parseFloat($('gate').value) || 0 });
+    last = { res, pairs: pr.pairs, bad: t.bad, out: pr.out };
+    render(fromUser);
+  }
+
+  function render(fromUser) {
+    const { res: r, pairs, bad, out } = last;
+    $('example-tag').hidden = !isExample;
+    const bar = r.gate === 0 ? 'zero' : pct(r.gate);
+    $('case-left').textContent = int(r.n) + ' trades / ' + Core.iso(r.from) + ' to ' + Core.iso(r.to) + ' / bar: ' + bar;
+
+    const V = {
+      pass:   ['good', 'Alpha survives', `After removing what the market did, <b>${pct(r.alpha)} per trade</b> is left, and the whole 95% range (${pct(r.lo)} to ${pct(r.hi)}) sits above your bar of ${bar}.`],
+      none:   ['crit', 'No alpha', `After removing what the market did, <b>${pct(r.alpha)} per trade</b> is left. Even the top of the 95% range (${pct(r.hi)}) is below your bar of ${bar}.`],
+      market: ['serious', 'Mostly market', `<b>${int(r.share * 100)}% of your average trade is the market</b> moving while you held. What is left, ${pct(r.alpha)} per trade, cannot be told apart from ${bar} with these trades (95% range ${pct(r.lo)} to ${pct(r.hi)}).`],
+      open:   ['warn', 'Not proven', `What is left after the market, <b>${pct(r.alpha)} per trade</b>, could be real. The 95% range (${pct(r.lo)} to ${pct(r.hi)}) still includes your bar of ${bar}.`],
+      few:    ['warn', 'Too few trades', `Only ${r.n} matched trades. Any number from a sample this small is noise. Thirty is the minimum here, and a few hundred is better.`]
+    }[r.verdict];
+    const st = $('stamp');
+    st.className = 'stamp ' + V[0];
+    $('stamp-icon').innerHTML = ICON[V[0]];
+    $('stamp-text').textContent = V[1];
+    if (fromUser) { void st.offsetWidth; st.classList.add('hit'); }
+    $('finding').innerHTML = V[2];
+
+    $('tiles').innerHTML = [
+      ['Average trade', pct(r.raw), 'as reported'],
+      ['Beta to the market', plain(r.beta), '95% ' + plain(r.betaLo) + ' to ' + plain(r.betaHi)],
+      ['Market’s share', isFinite(r.share) ? int(r.share * 100) + '%' : 'n/a', 'avg market move ' + pct(r.mktMove)],
+      ['Alpha per trade', pct(r.alpha), '95% ' + plain(r.lo) + ' to ' + plain(r.hi)]
+    ].map(t => `<div class="tile"><span class="k">${t[0]}</span><span class="v">${t[1]}</span><span class="s">${t[2]}</span></div>`).join('');
+
+    drawBars(r); drawScatter(r, pairs);
+    $('bars-cap').textContent = 'The thin line on the last bar is the 95% range for alpha. If it crosses your bar of ' + (r.gate === 0 ? 'zero' : pct(r.gate)) + ', the edge is not established.';
+
+    const maxA = Math.max(...r.years.map(y => Math.abs(y.alpha)), 1e-9);
+    $('years').innerHTML = '<thead><tr><th>Year</th><th>Trades</th><th>Average trade</th><th>Market’s part</th><th>Alpha</th><th aria-hidden="true"></th></tr></thead><tbody>' +
+      r.years.map(y => `<tr><td>${y.y}</td><td>${int(y.n)}</td><td>${pct(y.raw)}</td><td>${pct(y.mkt)}</td><td>${pct(y.alpha)}</td>` +
+        `<td style="text-align:left"><span class="sign">${y.alpha < 0 ? '−' : '+'}</span><span class="bar${y.alpha < 0 ? ' neg' : ''}" style="width:${Math.max(2, Math.round(Math.abs(y.alpha) / maxA * 90))}px"></span></td></tr>`).join('') + '</tbody>';
+
+    const notes = [];
+    const negY = r.years.filter(y => y.alpha < 0).length;
+    if (r.years.length > 1) notes.push(`Alpha was negative in <b>${negY} of ${r.years.length}</b> years.`);
+    if (isFinite(r.top5Share)) notes.push(`Your 5 best trades make up <b>${int(r.top5Share * 100)}%</b> of total profit. Without them, alpha is ${pct(r.alphaEx5)} per trade.`);
+    if (isFinite(r.need) && r.need > r.n) notes.push(`To confirm an alpha of this size at this noise level you would need about <b>${int(r.need)} trades</b>. You have ${int(r.n)}.`);
+    if (r.verdict !== 'pass' && r.alpha <= r.gate) notes.push('The estimate itself is at or below your bar. More trades of the same kind will not rescue it.');
+    notes.push(`The 95% range was drawn from ${int(r.weeks)} entry weeks, not ${int(r.n)} independent trades. Trades entered in the same week share the same market move.`);
+    if (out) notes.push(`${int(out)} trades fell outside the benchmark dates and were left out.`);
+    if (bad) notes.push(`${int(bad)} rows could not be read and were skipped.`);
+    $('notes').innerHTML = notes.map(n => '<li>' + n + '</li>').join('');
+
+    const show = pairs.slice(0, 300);
+    $('rows').innerHTML = '<thead><tr><th>Entry</th><th>Exit</th><th>Trade</th><th>Market</th><th>Trade minus beta × market</th></tr></thead><tbody>' +
+      show.map(p => `<tr><td>${Core.iso(p.e)}</td><td>${Core.iso(p.x)}</td><td>${pct(p.r)}</td><td>${pct(p.m)}</td><td>${pct(p.r - r.beta * p.m)}</td></tr>`).join('') + '</tbody>';
+    $('rows-wrap').querySelector('summary').textContent = pairs.length > 300 ? 'Matched trades (first 300 of ' + int(pairs.length) + ')' : 'Matched trades (' + int(pairs.length) + ')';
+  }
+
+  function drawBars(r) {
+    const el = $('bars'), W = Math.max(280, el.clientWidth), rowH = 50, padL = 2, padR = 6, top = 4;
+    const wide = W >= 520;
+    const rows = [
+      ['Average trade, as reported', r.raw, 'm-raw', pct(r.raw)],
+      [wide ? 'The market’s part (beta × market move)' : 'The market’s part', r.marketPart, 'm-market', pct(r.marketPart)],
+      ['What is left: alpha', r.alpha, 'm-alpha', wide ? pct(r.alpha) + '  (95% ' + pct(r.lo) + ' to ' + pct(r.hi) + ')' : pct(r.alpha)]
+    ];
+    const vals = [0, r.raw, r.marketPart, r.alpha, r.lo, r.hi, r.gate];
+    let lo = Math.min(...vals), hi = Math.max(...vals); const padv = (hi - lo) * 0.06 || 0.1; lo -= lo < 0 ? padv : 0; hi += padv;
+    const x = v => padL + (v - lo) / (hi - lo) * (W - padL - padR);
+    const tk = ticks(lo, hi, W < 420 ? 4 : 7), H = top + rows.length * rowH + 26;
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Average trade ${pct(r.raw)}, of which the market's part is ${pct(r.marketPart)} and alpha is ${pct(r.alpha)}">`;
+    for (const t of tk.out) s += `<line class="${t === 0 ? 'base' : 'grid'}" x1="${x(t)}" x2="${x(t)}" y1="${top}" y2="${H - 22}"/><text class="t-tick" x="${x(t)}" y="${H - 6}" text-anchor="${x(t) < 24 ? 'start' : x(t) > W - 24 ? 'end' : 'middle'}">${plain(t, dec(tk.step))}%</text>`;
+    rows.forEach((row, i) => {
+      const y = top + i * rowH, x0 = x(0), x1 = x(row[1]), a = Math.min(x0, x1), w = Math.max(1.5, Math.abs(x1 - x0)), bh = 18, by = y + 24;
+      const rr = Math.min(4, w / 2), right = x1 >= x0;
+      const d = right
+        ? `M${a},${by}h${w - rr}a${rr},${rr} 0 0 1 ${rr},${rr}v${bh - 2 * rr}a${rr},${rr} 0 0 1 ${-rr},${rr}h${-(w - rr)}z`
+        : `M${a + w},${by}h${-(w - rr)}a${rr},${rr} 0 0 0 ${-rr},${rr}v${bh - 2 * rr}a${rr},${rr} 0 0 0 ${rr},${rr}h${w - rr}z`;
+      s += `<text class="t-lab" x="${padL}" y="${y + 15}">${esc(row[0])}</text>`;
+      s += `<text class="t-val" x="${W - padR}" y="${y + 15}" text-anchor="end">${esc(row[3])}</text>`;
+      s += `<path class="${row[2]}" d="${d}"><title>${esc(row[0])}: ${esc(row[3])}</title></path>`;
+      if (i === 2) { const m = by + bh / 2; s += `<path class="whisk" d="M${x(r.lo)},${m - 6}v12M${x(r.lo)},${m}H${x(r.hi)}M${x(r.hi)},${m - 6}v12"/>`; }
+    });
+    el.innerHTML = s + '</svg>';
+  }
+
+  function drawScatter(r, pairs) {
+    const el = $('scatter'), W = Math.max(280, el.clientWidth), H = Math.round(Math.min(380, Math.max(240, W * 0.52)));
+    const L = 44, R = 12, T = 10, Bm = 40;
+    const step = Math.max(1, Math.ceil(pairs.length / 1500)), pts = pairs.filter((_, i) => i % step === 0);
+    const xs = pairs.map(p => p.m), ys = pairs.map(p => p.r);
+    let x0 = Math.min(...xs, 0), x1 = Math.max(...xs, 0), y0 = Math.min(...ys, 0), y1 = Math.max(...ys, 0);
+    const px = (x1 - x0) * 0.05 || 1, py = (y1 - y0) * 0.05 || 1; x0 -= px; x1 += px; y0 -= py; y1 += py;
+    const X = v => L + (v - x0) / (x1 - x0) * (W - L - R), Y = v => T + (1 - (v - y0) / (y1 - y0)) * (H - T - Bm);
+    const tx = ticks(x0, x1, W < 420 ? 4 : 8), ty = ticks(y0, y1, 6);
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Scatter of ${pairs.length} trades: trade return against market return over the same days. Fitted slope ${plain(r.beta)}.">`;
+    for (const t of ty.out) s += `<line class="${t === 0 ? 'base' : 'grid'}" x1="${L}" x2="${W - R}" y1="${Y(t)}" y2="${Y(t)}"/><text class="t-tick" x="${L - 6}" y="${Y(t) + 4}" text-anchor="end">${plain(t, dec(ty.step))}%</text>`;
+    for (const t of tx.out) s += (t === 0 ? `<line class="base" x1="${X(0)}" x2="${X(0)}" y1="${T}" y2="${H - Bm}"/>` : '') + `<text class="t-tick" x="${X(t)}" y="${H - Bm + 15}" text-anchor="middle">${plain(t, dec(tx.step))}%</text>`;
+    s += `<text class="t-axis" x="${(L + W - R) / 2}" y="${H - 4}" text-anchor="middle">Market move while the trade was open</text>`;
+    s += '<g>' + pts.map((p, i) => `<circle class="dot" data-i="${i}" cx="${X(p.m).toFixed(1)}" cy="${Y(p.r).toFixed(1)}" r="3.5"/>`).join('') + '</g>';
+    const fa = x0 + px, fb = x1 - px;
+    s += `<line class="fit" x1="${X(fa)}" y1="${Y(r.alpha + r.beta * fa)}" x2="${X(fb)}" y2="${Y(r.alpha + r.beta * fb)}"/>`;
+    el.innerHTML = s + '</svg><div class="tip" hidden></div>';
+    $('scatter-cap').textContent = 'Each dot is one trade. Up is the trade’s return, right is what the market did over the same days. The line has slope ' + plain(r.beta) +
+      ' (beta): for every 1% the market moved, the average trade moved ' + plain(r.beta) + '%. Alpha is where the line crosses zero market move.' +
+      (step > 1 ? ' Showing ' + int(pts.length) + ' of ' + int(pairs.length) + ' trades.' : '');
+    const svg = el.querySelector('svg'), tip = el.querySelector('.tip'), dots = svg.querySelectorAll('.dot');
+    let on = null;
+    const cx = pts.map(p => X(p.m)), cy = pts.map(p => Y(p.r));
+    svg.addEventListener('pointermove', ev => {
+      const box = svg.getBoundingClientRect(), k = W / box.width, mx = (ev.clientX - box.left) * k, my = (ev.clientY - box.top) * k;
+      let best = -1, bd = 24 * 24;
+      for (let i = 0; i < pts.length; i++) { const d = (cx[i] - mx) ** 2 + (cy[i] - my) ** 2; if (d < bd) { bd = d; best = i; } }
+      if (on !== null) dots[on].classList.remove('on');
+      if (best < 0) { tip.hidden = true; on = null; return; }
+      on = best; dots[best].classList.add('on');
+      const p = pts[best];
+      tip.innerHTML = Core.iso(p.e) + ' to ' + Core.iso(p.x) + '<br>trade ' + pct(p.r) + ' / market ' + pct(p.m);
+      tip.hidden = false;
+      const tw = tip.offsetWidth, left = Math.min(Math.max(0, cx[best] / k - tw / 2), box.width - tw);
+      tip.style.left = left + 'px'; tip.style.top = Math.max(0, cy[best] / k - tip.offsetHeight - 10) + 'px';
+    });
+    svg.addEventListener('pointerleave', () => { tip.hidden = true; if (on !== null) dots[on].classList.remove('on'); on = null; });
+  }
+
+  function loadExample() {
+    const ex = Core.example(EXAMPLE_SEED);
+    $('trades-text').value = ex.trades; $('bench-text').value = ex.bench;
+    $('unit').value = 'pct'; $('entry-at').value = 'close'; $('gate').value = '0';
+    isExample = true; run(false);
+  }
+  function fileInto(inputId, areaId) {
+    $(inputId).addEventListener('change', ev => {
+      const f = ev.target.files && ev.target.files[0]; if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => { $(areaId).value = String(rd.result); isExample = false; };
+      rd.readAsText(f);
+    });
+  }
+  fileInto('trades-file', 'trades-text'); fileInto('bench-file', 'bench-text');
+  ['trades-text', 'bench-text'].forEach(id => $(id).addEventListener('input', () => { isExample = false; }));
+  $('tray').addEventListener('submit', ev => { ev.preventDefault(); run(true); });
+  $('load-example').addEventListener('click', loadExample);
+  let timer = 0;
+  new ResizeObserver(() => { clearTimeout(timer); timer = setTimeout(() => { if (last) { drawBars(last.res); drawScatter(last.res, last.pairs); } }, 120); }).observe($('report'));
+  loadExample();
+})();
+</script>
+
+</body>
+</html>
