@@ -29,8 +29,9 @@ def secret_from_env(env: Mapping[str, str] = os.environ) -> str:
 
 
 class MemoryVault:
-    def __init__(self, encrypted_path, secret: str, must_exist: bool = False):
+    def __init__(self, encrypted_path, secret: str, must_exist: bool = False, plain_name: str = PLAIN_NAME):
         self.path, self.secret, self.must_exist = Path(encrypted_path), secret, must_exist
+        self.plain_name = plain_name
 
     def _save(self, plain: Path) -> None:
         if not plain.exists():
@@ -46,7 +47,7 @@ class MemoryVault:
         """Yields the plaintext path for TradingAgents' `memory_log_path`."""
         workdir = Path(workdir)
         workdir.mkdir(parents=True, exist_ok=True)
-        plain = workdir / PLAIN_NAME
+        plain = workdir / self.plain_name
         if self.path.exists():
             data = decrypt_bytes(self.path.read_bytes(), self.secret)  # wrong key: fails before the run
             fd = os.open(plain, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
@@ -62,3 +63,6 @@ class MemoryVault:
             finally:
                 if plain.exists():
                     plain.unlink()
+
+
+EncryptedFile = MemoryVault  # the same mechanism carries the ledger

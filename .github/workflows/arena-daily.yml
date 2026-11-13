@@ -1,0 +1,62 @@
+# Honest Arena daily run (draft section 5). Runs A, C and D for the day after the US close and pushes
+# the encrypted ledger, the encrypted decisions file and its SHA-256 before the next open.
+# The schedule is DISABLED until the owner enables it at freeze: manual trigger only.
+name: arena-daily
+
+on:
+  workflow_dispatch:
+    inputs:
+      day:
+        description: "Trading day YYYY-MM-DD (empty = today in New York)"
+        required: false
+        default: ""
+  # schedule:
+  #   - cron: "30 21 * * 1-5"   # 21:30 UTC, after the 16:00 New York close in both EST and EDT
+
+permissions:
+  contents: write
+
+concurrency:
+  group: arena-daily
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+      - name: Install (TradingAgents needs Python >= 3.11)
+        run: uv sync --frozen --python 3.12 --extra agent-a
+      - name: Run A, C and D
+        id: run
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          ARENA_AGE_KEY: ${{ secrets.ARENA_AGE_KEY }}
+          DAY_INPUT: ${{ inputs.day }}
+        run: |
+          DAY="${DAY_INPUT:-$(TZ=America/New_York date +%F)}"
+          echo "day=$DAY" >> "$GITHUB_OUTPUT"
+          set +e
+          uv run --python 3.12 python -m arena.run --day "$DAY"
+          code=$?
+          set -e
+          if [ "$code" = 3 ]; then echo "already run"; exit 0; fi
+          exit $code
+      - name: Commit and push (bot identity, UTC)
+        run: |
+          git add -A arena-data
+          if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
+          bad=$(git diff --cached --name-only | grep -v '^arena-data/' || true)
+          if [ -n "$bad" ]; then echo "refusing to commit paths outside arena-data:"; echo "$bad"; exit 1; fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "arena: decisions ${{ steps.run.outputs.day }}"
+          git pull --rebase --quiet origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+      - name: Pushed before the next open?
+        run: uv run --python 3.12 python -m arena.run deadline --day "${{ steps.run.outputs.day }}"
