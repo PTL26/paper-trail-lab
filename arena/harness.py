@@ -3,6 +3,7 @@ monthly stop, write the ledger and the daily decisions file, and chain the file'
 
 from __future__ import annotations
 
+import secrets
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -57,9 +58,15 @@ def run_day(day: date, agents, *, now: datetime, ledger: Ledger, decisions_dir, 
         else:
             decisions += _run_agent(agent, tickers, day, bars)
 
-    path, digest = write_decisions_file(decisions_dir, day, decisions, {"harness": HARNESS_VERSION})
+    # The random nonce makes the published SHA-256 impossible to reverse by trying every label combination.
+    meta = {"harness": HARNESS_VERSION, "nonce": secrets.token_hex(32)}
+    path, digest = write_decisions_file(decisions_dir, day, decisions, meta)
     for d in decisions:
         ledger.append({"type": "decision", "day": day.isoformat(), **decision_row(d)})
+    for d in decisions:
+        if d.diagnostics:
+            ledger.append({"type": "reliability", "day": day.isoformat(), "agent": d.agent, "ticker": d.ticker,
+                           **d.diagnostics})
     for d in decisions:
         if d.usage is not None:
             cost_log.record(d.agent, d.ticker, day, d.usage)

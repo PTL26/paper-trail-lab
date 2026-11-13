@@ -18,9 +18,11 @@ from pathlib import Path
 from statistics import mean
 from typing import List, Mapping, MutableMapping
 
+from .retry import is_quota_error  # noqa: F401  (re-exported for the report)
+
 TRADING_DAYS_PER_MONTH = 21
 UNIVERSE = ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "JPM", "XOM", "UNH"]
-DEFAULT_MODEL = "gemini-3.1-flash-lite"
+DEFAULT_MODEL = "gemini-3.1-flash-lite"  # draft v0.4 section 3
 
 
 def load_env_file(path, env: MutableMapping[str, str] = os.environ) -> List[str]:
@@ -43,20 +45,6 @@ def load_env_file(path, env: MutableMapping[str, str] = os.environ) -> List[str]
     return loaded
 
 
-def is_quota_error(e: BaseException) -> bool:
-    """429 / RESOURCE_EXHAUSTED anywhere in the cause chain. Only a boolean leaves this function."""
-    seen = set()
-    while e is not None and id(e) not in seen:
-        seen.add(id(e))
-        if getattr(e, "code", None) == 429 or getattr(e, "status_code", None) == 429:
-            return True
-        text = str(e)
-        if "RESOURCE_EXHAUSTED" in text or text.startswith("429") or " 429 " in text:
-            return True
-        e = e.__cause__ or e.__context__
-    return False
-
-
 def project_monthly(usd_per_ticker_day: float, tickers: int, days: int = TRADING_DAYS_PER_MONTH) -> float:
     return usd_per_ticker_day * tickers * days
 
@@ -77,6 +65,8 @@ def main(argv=None) -> int:
     from .agents.tradingagents import TradingAgentsAdapter
     from .costs import CostLog, MonthlyGuard
     from .crypto import generate_identity
+    from .diagnostics import Diagnostics, watch_data_sources
+    from .retry import gemini_retry
     from .harness import run_day
     from .ledger import Ledger
     from .memory import KEY_ENV, MemoryVault, secret_from_env
@@ -127,11 +117,13 @@ def main(argv=None) -> int:
             errors.append({"ticker": ticker, "day": day.isoformat(), "error": type(e).__name__,
                            "quota": is_quota_error(e)})
 
-        a = TradingAgentsAdapter(factory, args.model, counter.track, on_error=on_error)
+        diag = Diagnostics()
+        a = TradingAgentsAdapter(factory, args.model, counter.track, on_error=on_error, diagnostics=diag)
         agents = [a, BuyAndHold(first_decision_day=days[0]), RandomAgent(seed=0)]
-        for d in days:
-            run_day(d, agents, now=datetime.now(timezone.utc), ledger=ledger, decisions_dir=out / "decisions",
-                    cost_log=cost_log, guard=guard, tickers=tickers, bars={})
+        with gemini_retry(diag), watch_data_sources(diag):
+            for d in days:
+                run_day(d, agents, now=datetime.now(timezone.utc), ledger=ledger,
+                        decisions_dir=out / "decisions", cost_log=cost_log, guard=guard, tickers=tickers, bars={})
 
     ledger.verify()
     recs = ledger.records()

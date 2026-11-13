@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from typing import Optional
 
@@ -31,6 +31,7 @@ class Decision:
     target_weight: Optional[float] = None
     error: Optional[str] = None
     usage: Optional[Usage] = None
+    diagnostics: Optional[dict] = field(default=None, compare=False)  # reliability, ledger only
 
     @property
     def failed(self) -> bool:

@@ -90,3 +90,24 @@ def test_review_raw_text_is_kept_for_the_report_and_run_time_measured():
     a.decide(["AAPL", "MSFT"], D, VIEW)
     assert a.reviews == [{"ticker": "MSFT", "day": "2026-11-27", "signal": "REVIEW", "text": "raw text for MSFT"}]
     assert set(a.seconds) == {("AAPL", D), ("MSFT", D)} and all(v >= 0 for v in a.seconds.values())
+
+
+def test_diagnostics_are_attached_to_each_decision():
+    from arena.diagnostics import Diagnostics
+    diag = Diagnostics()
+
+    class G(FakeGraph):
+        def propagate(self, ticker, trade_date):
+            if ticker == "MSFT":
+                diag.retry("quota")
+                diag.source_failed("reddit")
+            return super().propagate(ticker, trade_date)
+
+    a = TradingAgentsAdapter(graph_factory=lambda: G({"AAPL": "Buy", "MSFT": "REVIEW"}), model="m",
+                             track_usage=fake_tracker, diagnostics=diag)
+    out = {d.ticker: d for d in a.decide(["AAPL", "MSFT"], D, VIEW)}
+    assert out["AAPL"].diagnostics == {"retries": 0, "retry_kinds": {}, "gave_up": 0, "failed_sources": [],
+                                       "seconds": out["AAPL"].diagnostics["seconds"]}
+    m = out["MSFT"].diagnostics
+    assert m["retries"] == 1 and m["retry_kinds"] == {"quota": 1} and m["failed_sources"] == ["reddit"]
+    assert m["review_text"] == "raw text for MSFT"

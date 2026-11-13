@@ -1,8 +1,10 @@
-# Honest Arena — Pre-registration (DRAFT v0.3, not frozen)
+# Honest Arena — Pre-registration (DRAFT v0.4, not frozen)
 
-Paper Trail Lab · draft 2026-11-13 (v0.3; v0.2 and v0.1 earlier the same week, v0.1 after the 4a investigation) · to be frozen (signed commit + SHA-256 + OpenTimestamps) on or before 2026-11-29, before the first scored trading day.
+Paper Trail Lab · draft 2026-11-13 (v0.4; v0.3, v0.2 and v0.1 earlier the same week, v0.1 after the 4a investigation) · to be frozen (signed commit + SHA-256 + OpenTimestamps) on or before 2026-11-29, before the first scored trading day.
 
 Items marked **[PILOT]** are filled in from the pilot week (2026-11-23 → 11-27). The pilot may only settle feasibility questions: cost, data availability, run time, output parsing. Pilot returns are never computed or looked at.
+
+Changes in v0.4 (2026-11-13, after the dry run, before any scored data; no returns or labels were seen): the model is fixed as gemini-3.1-flash-lite on the paid tier; a harness-level retry for rate-limit and server errors is added as infrastructure; data-source failures are recorded per stock and day; known data gaps are listed.
 
 Changes in v0.3 (2026-11-13, before any data): the universe is fixed at 10 stocks (enlargement clause removed); the rule for choosing between the two Gemini Flash-Lite models is stated; a failed day is defined.
 
@@ -32,8 +34,8 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
 
 ## 3. Model
 
-- A uses one LLM for every role: Gemini Flash-Lite [PILOT: exact model id], with the project's default temperature and settings.
-- Both gemini-3.5-flash-lite and gemini-3.1-flash-lite are tried in the pilot. gemini-3.5-flash-lite is chosen if it runs within the Gemini free tier, or if its projected paid-tier cost is at most €15 per month; otherwise gemini-3.1-flash-lite. The owner confirms the choice before freeze.
+- A uses one LLM for every role: **gemini-3.1-flash-lite** (Gemini Developer API, paid tier), with the project's default temperature and settings.
+- Why this model (decided 2026-11-13 from a 3-day dry run of both Flash-Lite models, on cost and reliability only, with no returns or labels seen): gemini-3.5-flash-lite's projected cost (about $13–14 per month for 10 stocks) leaves too little headroom under the €15 cap once memory-settlement calls and failed runs are added; gemini-3.1-flash-lite projected about $6 per month. The free tier was rejected because its quota errors would create missing decisions.
 - Fallback: Claude Haiku [PILOT: exact model id], only if Flash-Lite fails the pilot on reliability (more than 1 failed run in 5 days).
 - The model is chosen in the pilot by cost and reliability only, never by results.
 - If the provider retires the model during the test, the closest successor is used and logged as an amendment.
@@ -47,6 +49,7 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
 - **Scored period:** 60 US trading days starting 2026-11-30 [PILOT: exact last day].
 - **Daily run:** after the US close on GitHub Actions. A receives the date and each ticker and produces one label per ticker for the next session.
 - **Commitment:** all decisions are written to the ledger, hashed, and the hash is pushed to the public repo before the next US open. A decision committed after the open is void and counts as "hold".
+- **Retries (infrastructure, not an agent change):** an LLM call that fails with a rate-limit (429) or server (5xx) error is sent again by the harness, at most 3 attempts per call in total, after waits of about 30 and 60 seconds. The identical request is repeated; prompts, settings and the agent are unchanged, and the Gemini client's own built-in retries stay at their default. Every retry is logged in the ledger.
 
 ## 6. Turning decisions into positions
 
@@ -76,6 +79,7 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
 - Alpha against the S&P 500 index.
 - LLM cost per day.
 - Share of REVIEW labels and failed runs.
+- Reliability per stock and day: LLM retries and failed data sources (recorded in the ledger).
 - The same comparison for D.
 
 ## 9. Verdict rules
@@ -131,3 +135,4 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
 - One agent, one model and default settings. The authors might run it differently; this is deliberate, because the test measures what an ordinary user gets.
 - LLM outputs vary between runs even with fixed settings.
 - The model may have been trained on news about these stocks up to its training cutoff; a forward test after that cutoff limits, but does not remove, this effect.
+- In the dry run Reddit refused TradingAgents' requests (HTTP 403) for every stock, so the social analyst ran without Reddit data. One FRED macro series was also missing. A runs with whatever its default data sources return; failed data sources are recorded per stock and day in the ledger as a reliability metric.

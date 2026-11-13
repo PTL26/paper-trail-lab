@@ -80,3 +80,18 @@ def test_one_day_cannot_be_run_twice(env):
     run_day(D, [RandomAgent(seed=1)], now=AFTER_CLOSE, **env)
     with pytest.raises(FileExistsError):
         run_day(D, [RandomAgent(seed=1)], now=AFTER_CLOSE, **env)
+
+
+def test_reliability_records_and_a_nonce_in_the_decisions_file(env):
+    class Diag:
+        id = "A"
+
+        def decide(self, tickers, as_of, prices):
+            return [Decision("A", t, as_of, label="Hold",
+                             diagnostics={"retries": 1, "failed_sources": ["reddit"]}) for t in tickers]
+    res = run_day(D, [Diag()], now=AFTER_CLOSE, **env)
+    rel = [r for r in env["ledger"].records() if r["type"] == "reliability"]
+    assert [(r["agent"], r["ticker"], r["retries"], r["failed_sources"]) for r in rel] == [
+        ("A", "AAPL", 1, ["reddit"]), ("A", "MSFT", 1, ["reddit"])]
+    body = json.loads(res.file_path.read_text())
+    assert len(body["meta"]["nonce"]) == 64 and "retries" not in res.file_path.read_text()
