@@ -1,0 +1,56 @@
+# Honest Arena Monday publication (draft section 11): decrypts and publishes, in plain text under
+# arena-data/public/, the scored decisions and aggregated trades at least 5 trading days old, plus the
+# weekly metrics report. Reads arena-data/scored only; pilot data is never published.
+# The schedule is DISABLED until the owner enables it: manual trigger only.
+name: arena-weekly
+
+on:
+  workflow_dispatch:
+    inputs:
+      as_of:
+        description: "Publication date YYYY-MM-DD (empty = today in New York)"
+        required: false
+        default: ""
+  # schedule:
+  #   - cron: "0 12 * * 1"   # Monday 12:00 UTC, before the US open
+
+permissions:
+  contents: write
+
+concurrency:
+  group: arena-daily
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0   # commit times of the decisions files come from git history
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+      - name: Install (TradingAgents needs Python >= 3.11)
+        run: uv sync --frozen --python 3.12 --extra agent-a
+      - name: Publish
+        id: pub
+        env:
+          ARENA_AGE_KEY: ${{ secrets.ARENA_AGE_KEY }}
+          AS_OF_INPUT: ${{ inputs.as_of }}
+        run: |
+          AS_OF="${AS_OF_INPUT:-$(TZ=America/New_York date +%F)}"
+          echo "as_of=$AS_OF" >> "$GITHUB_OUTPUT"
+          uv run --python 3.12 python -m arena.publish --as-of "$AS_OF"
+      - name: Commit and push (bot identity, UTC)
+        run: |
+          git add -A arena-data/public
+          if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
+          bad=$(git diff --cached --name-only | grep -v '^arena-data/public/' || true)
+          if [ -n "$bad" ]; then echo "refusing to commit paths outside arena-data/public:"; echo "$bad"; exit 1; fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "arena: weekly publication ${{ steps.pub.outputs.as_of }}"
+          git pull --rebase --quiet origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

@@ -6,6 +6,11 @@ name: arena-daily
 on:
   workflow_dispatch:
     inputs:
+      phase:
+        description: "pilot writes to arena-data/pilot only (never scored); scored is refused until freeze"
+        type: choice
+        options: [pilot, scored]
+        default: pilot
       day:
         description: "Trading day YYYY-MM-DD (empty = today in New York)"
         required: false
@@ -38,11 +43,14 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
           ARENA_AGE_KEY: ${{ secrets.ARENA_AGE_KEY }}
           DAY_INPUT: ${{ inputs.day }}
+          PHASE_INPUT: ${{ inputs.phase }}
         run: |
           DAY="${DAY_INPUT:-$(TZ=America/New_York date +%F)}"
           echo "day=$DAY" >> "$GITHUB_OUTPUT"
           set +e
-          uv run --python 3.12 python -m arena.run --day "$DAY"
+          PHASE_ARG=""
+          if [ -n "$PHASE_INPUT" ]; then PHASE_ARG="--phase $PHASE_INPUT"; fi
+          uv run --python 3.12 python -m arena.run --day "$DAY" $PHASE_ARG
           code=$?
           set -e
           if [ "$code" = 3 ]; then echo "already run"; exit 0; fi

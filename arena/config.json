@@ -2,10 +2,22 @@
   "phase": "pilot",
   "data_root": "arena-data",
   "model": "gemini-3.1-flash-lite",
-  "tickers": ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "JPM", "XOM", "UNH"],
+  "tickers": [
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "AMZN",
+    "GOOGL",
+    "META",
+    "TSLA",
+    "JPM",
+    "XOM",
+    "UNH"
+  ],
   "first_decision_day": "2026-11-27",
-  "random_seed": null,
-  "bootstrap_seed": null,
+  "random_seed": 20261130,
+  "bootstrap_seed": 20270226,
   "usd_per_eur": 1.0,
-  "age_recipient": "age14pgwjpflksj74dhvucgh2hav8x3rpc9a88kyp94ztqq79gj3qvuqf70anr"
+  "age_recipient": "age14pgwjpflksj74dhvucgh2hav8x3rpc9a88kyp94ztqq79gj3qvuqf70anr",
+  "scored_enabled": false
 }

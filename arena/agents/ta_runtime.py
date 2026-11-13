@@ -15,6 +15,9 @@ PINNED_VERSION = "0.7.1"
 PINNED_COMMIT = "c4544913a14ed3df5f1ed7b9e8483270ce20682a"  # refs/tags/v0.7.1
 SEC_CONTACT = "PaperTrailLab papertraillab@proton.me"
 REQUIRED_ENV = ("GOOGLE_API_KEY", "FRED_API_KEY")
+# The Gemini client's own retries: 2 (the SDK counts attempts including the first request, so 3).
+# With the harness's 3 attempts per call (arena/retry.py) one call sends at most 3 x 3 = 9 requests.
+GEMINI_CLIENT_ATTEMPTS = 3
 
 
 def env_status(env: Mapping[str, str] = os.environ) -> Dict[str, bool]:
@@ -43,6 +46,7 @@ def build_config(default_config: Mapping, model: str, workdir, memory_path) -> d
         "results_dir": str(workdir / "results"),
         "data_cache_dir": str(workdir / "cache"),
         "memory_log_path": str(memory_path),
+        "llm_max_retries": GEMINI_CLIENT_ATTEMPTS,  # infrastructure (draft section 5), not an agent setting
     })
     return cfg
 

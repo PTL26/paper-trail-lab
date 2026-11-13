@@ -1,8 +1,10 @@
-# Honest Arena — Pre-registration (DRAFT v0.4, not frozen)
+# Honest Arena — Pre-registration (DRAFT v0.5, not frozen)
 
-Paper Trail Lab · draft 2026-11-13 (v0.4; v0.3, v0.2 and v0.1 earlier the same week, v0.1 after the 4a investigation) · to be frozen (signed commit + SHA-256 + OpenTimestamps) on or before 2026-11-29, before the first scored trading day.
+Paper Trail Lab · draft 2026-11-13 (v0.5; v0.4–v0.1 earlier the same week, v0.1 after the 4a investigation) · to be frozen (signed commit + SHA-256 + OpenTimestamps) on or before 2026-11-29, before the first scored trading day.
 
-Items marked **[PILOT]** are filled in from the pilot week (2026-11-23 → 11-27). The pilot may only settle feasibility questions: cost, data availability, run time, output parsing. Pilot returns are never computed or looked at.
+Items marked **[PILOT]** are filled in from the pilot week (2026-11-23 → 11-27). The pilot may only settle feasibility questions: cost, data availability, run time, output parsing. Pilot returns are never computed or looked at. Pilot runs write only to `arena-data/pilot/`; pilot output is never scored and never decrypted publicly. The pilot report covers run success, timing, cost, retries, failed data sources and the REVIEW count, and no labels or returns.
+
+Changes in v0.5 (2026-11-13, before any scored data): seeds fixed (D: 20261130, bootstrap: 20270226); the Gemini client's own retries set to 2; the price source for the simulation is named; how section 11 is implemented is stated; the pilot's separation is stated.
 
 Changes in v0.4 (2026-11-13, after the dry run, before any scored data; no returns or labels were seen): the model is fixed as gemini-3.1-flash-lite on the paid tier; a harness-level retry for rate-limit and server errors is added as infrastructure; data-source failures are recorded per stock and day; known data gaps are listed.
 
@@ -26,7 +28,7 @@ This tests software as an ordinary user would run it. It is not a recommendation
 |---|---|---|
 | A | TauricResearch/TradingAgents (Apache-2.0) | Default pipeline (4 analysts, 1 debate round, 1 risk round), memory on, version v0.7.1 or the release current at freeze [PILOT: exact commit] |
 | C | Buy-and-hold | Equal weight in every universe stock, bought on day 1, never rebalanced |
-| D | Random agent | Each stock each day draws one of A's five labels with equal probability and is mapped with the same rule as A; fixed seed published at freeze |
+| D | Random agent | Each stock each day draws one of A's five labels with equal probability and is mapped with the same rule as A; seed 20261130 |
 
 C is the primary benchmark. D shows what chance looks like under the same mapping and similar turnover.
 
@@ -49,7 +51,7 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
 - **Scored period:** 60 US trading days starting 2026-11-30 [PILOT: exact last day].
 - **Daily run:** after the US close on GitHub Actions. A receives the date and each ticker and produces one label per ticker for the next session.
 - **Commitment:** all decisions are written to the ledger, hashed, and the hash is pushed to the public repo before the next US open. A decision committed after the open is void and counts as "hold".
-- **Retries (infrastructure, not an agent change):** an LLM call that fails with a rate-limit (429) or server (5xx) error is sent again by the harness, at most 3 attempts per call in total, after waits of about 30 and 60 seconds. The identical request is repeated; prompts, settings and the agent are unchanged, and the Gemini client's own built-in retries stay at their default. Every retry is logged in the ledger.
+- **Retries (infrastructure, not an agent change):** an LLM call that fails with a rate-limit (429) or server (5xx) error is sent again by the harness, at most 3 attempts per call in total, after waits of about 30 and 60 seconds. The identical request is repeated; prompts and the agent are unchanged. The Gemini client's own retries are set to 2 (3 attempts per request), so one call sends at most 9 requests. Every retry is logged in the ledger.
 
 ## 6. Turning decisions into positions
 
@@ -60,6 +62,7 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
 - **Fills:** at the next session's opening price.
 - **Costs:** 10 basis points per side.
 - Cash earns nothing.
+- **Prices:** daily split-adjusted opening and closing prices from Yahoo Finance (via yfinance, TradingAgents' own default source), fetched when results are computed and never stored or published. Dividends are not credited. The S&P 500 comparison uses the index's daily closes from the same source. [OWNER: confirm before freeze]
 
 ## 7. Agent memory
 
@@ -69,7 +72,7 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
 
 ## 8. Metrics
 
-**Primary:** daily alpha of A against C (A − C), with a 95% confidence interval from a block bootstrap by week (10,000 resamples, seed published at freeze).
+**Primary:** daily alpha of A against C (A − C), with a 95% confidence interval from a block bootstrap by week (10,000 resamples, seed 20270226).
 
 **Secondary (reported, never decides the verdict):**
 - Total return.
@@ -113,6 +116,11 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
   - the memory decryption key;
   - all amendments, with results shown with and without each one.
 - Raw licensed prices are never published; only decisions, weights and computed returns.
+- **How this is implemented:**
+  - Each day the ledger, the decisions file and A's memory are committed to the public repo encrypted (age); only the decisions file's SHA-256 (the file carries a random nonce, so the hash cannot be reversed by trying every label combination) and the ledger's head hash are in plain text.
+  - Every Monday before the open, a scheduled job decrypts and publishes in plain text under `arena-data/public/` the decisions files of every session that has at least 5 later trading days closed, with each file checked against its committed SHA-256.
+  - In the same run it publishes the weekly report: the section 8 metrics computed through that same cutoff, trades aggregated per participant per week (number of buys and sells, turnover, costs), run reliability and LLM cost. Individual trades and current positions are not published.
+  - Only scored data is published; pilot data never is.
 - No investment recommendations, price targets or forward-looking statements about any stock.
 
 ## 12. Amendments

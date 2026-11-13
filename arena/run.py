@@ -67,9 +67,14 @@ def run(argv) -> int:
     ap.add_argument("--repo-root", default=".")
     ap.add_argument("--day")
     ap.add_argument("--now")
+    ap.add_argument("--phase", choices=("pilot", "scored"),
+                    help="pilot writes to <data_root>/pilot only; default: config 'phase'")
     a = ap.parse_args(argv)
     root = Path(a.repo_root).resolve()
     cfg = json.loads((root / "arena" / "config.json").read_text(encoding="utf-8"))
+    phase = a.phase or cfg["phase"]
+    if phase == "scored" and not cfg.get("scored_enabled"):
+        raise RuntimeError("scored runs are disabled until freeze (set scored_enabled in arena/config.json)")
     now = _now(a.now)
     day = date.fromisoformat(a.day) if a.day else now.astimezone(NEW_YORK).date()
     if not is_trading_day(day):
@@ -92,7 +97,7 @@ def run(argv) -> int:
     if recipient_for(secret) != cfg["age_recipient"]:
         raise RuntimeError("ARENA_AGE_KEY does not match the published age_recipient in arena/config.json")
 
-    data = root / cfg["data_root"] / cfg["phase"]
+    data = root / cfg["data_root"] / phase
     dec_dir, head_file = data / "decisions", data / "ledger.head"
     if (dec_dir / f"{day.isoformat()}.json.sha256").exists():
         print(f"{day} has already been run")
@@ -129,7 +134,7 @@ def run(argv) -> int:
         a_decs = [d for d in res.decisions if d.agent == "A"]
         cost = sum(r["usd"] for r in ledger.records() if r["type"] == "cost" and r["day"] == day.isoformat())
     # Counts only: the Actions log is public and must not reveal positions.
-    print(f"{day}: A decided {sum(not d.failed for d in a_decs)}/{len(a_decs)} stocks, "
+    print(f"[{phase}] {day}: A decided {sum(not d.failed for d in a_decs)}/{len(a_decs)} stocks, "
           f"failed {sum(d.failed for d in a_decs)}; cost ${cost:.4f}; decisions sha256 {res.file_sha256}")
     return 0
 

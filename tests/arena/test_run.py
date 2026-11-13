@@ -108,3 +108,11 @@ def test_committed_config_is_safe_to_ship():
     cfg = json.loads((Path(runmod.__file__).parent / "config.json").read_text())
     assert cfg["model"] == "gemini-3.1-flash-lite" and len(cfg["tickers"]) == 10
     assert cfg["phase"] in ("pilot", "scored") and cfg["age_recipient"].startswith("age1")
+
+
+def test_scored_phase_is_refused_until_enabled_and_pilot_stays_in_pilot(repo):
+    root, _ = repo
+    with pytest.raises(RuntimeError, match="freeze"):
+        runmod.main(["--repo-root", str(root), "--day", "2026-11-30", "--now", AFTER.isoformat(), "--phase", "scored"])
+    assert run(root) == 0
+    assert sorted(p.name for p in (root / "arena-data").iterdir()) == ["pilot"]

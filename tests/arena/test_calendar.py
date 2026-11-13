@@ -33,3 +33,15 @@ def test_out_of_range_years_are_refused():
     import pytest
     with pytest.raises(ValueError):
         is_trading_day(date(2028, 3, 1))
+
+
+def test_rest_of_2027_from_the_nyse_page():
+    for d in (date(2027, 7, 5), date(2027, 9, 6), date(2027, 11, 25), date(2027, 12, 24)):
+        assert not is_trading_day(d)
+    assert session_close_utc(date(2027, 11, 26)) == datetime(2027, 11, 26, 18, 0, tzinfo=timezone.utc)
+
+
+def test_sixty_sessions_from_the_first_scored_day():
+    from arena.calendar import sessions_between
+    s = sessions_between(date(2026, 11, 30), date(2027, 3, 31))
+    assert len(s[:60]) == 60 and s[0] == date(2026, 11, 30)
