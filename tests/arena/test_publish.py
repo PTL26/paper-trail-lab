@@ -72,9 +72,13 @@ def test_publishes_only_old_enough_scored_data_without_prices(scored):
         assert hashlib.sha256((public / "decisions" / n).read_bytes()).hexdigest() == sha
     rep = json.loads(path.read_text())
     assert rep["cutoff_session"] == "2026-12-04" and rep["interim"] is True
+    assert rep["label"] == "interim — no verdict before the end"
     text = path.read_text() + (public / "weekly" / "2026-12-14.md").read_text()
     for w in ('"open', '"close', "price"):
         assert w not in text
+    for w in ("PASS", "FAIL", "INCONCLUSIVE", "inconclusive", "Inconclusive"):   # no verdict wording before the end
+        assert w not in text
+    assert "interim — no verdict before the end" in (public / "weekly" / "2026-12-14.md").read_text()
     assert rep["reliability"]["llm_retries"] == 40 and rep["reliability"]["failed_data_sources"] == {"reddit": 40}
     assert rep["reliability"]["review"] == 20 and rep["trades_by_week"]["A"]
     assert set(rep["A"]["vs_C"]) >= {"ci95_lo", "ci95_hi", "beta"} and rep["A"]["vs_SP500"]["days"] == 4

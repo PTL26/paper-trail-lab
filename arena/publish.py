@@ -31,12 +31,13 @@ from .clock import NEW_YORK
 from .crypto import decrypt_bytes
 from .ledger import Ledger
 from .metrics import (alpha_series, beta, block_bootstrap_ci, daily_returns, max_drawdown,
-                      share_explained_by_beta, verdict)
+                      share_explained_by_beta)
 from .models import REVIEW, Decision
 from .rollups import failed_day_summary, index_comparison, is_failed_day, ticker_failures
 from .simulator import CAPITAL, simulate
 
 DELAY_SESSIONS = 5
+INTERIM_LABEL = "interim — no verdict before the end"  # draft v0.6 section 11
 
 
 def cutoff_session(as_of: date) -> date:
@@ -85,7 +86,7 @@ def _vs_c(x_ret, c_ret, seed) -> dict:
     alpha = alpha_series(x_ret, c_ret)
     mean, lo, hi = block_bootstrap_ci(alpha, resamples=10_000, seed=seed)
     return {"days": len(alpha), "alpha_mean_daily": mean, "ci95_lo": lo, "ci95_hi": hi,
-            "interval_reading": verdict(lo, hi), "beta": beta(x_ret, c_ret),
+            "beta": beta(x_ret, c_ret),
             "share_explained_by_beta": share_explained_by_beta(x_ret, c_ret)}
 
 
@@ -169,8 +170,7 @@ def publish(root: Path, as_of: date, secret: str, fetch=marketdata.fetch,
     a_vs_c = _vs_c(rets["A"], rets["C"], seed)
 
     report = {
-        "as_of": as_of.isoformat(), "interim": True,
-        "note": "Interim figures through the cutoff session; the verdict is decided only at the end (section 9).",
+        "as_of": as_of.isoformat(), "interim": True, "label": INTERIM_LABEL,
         "cutoff_session": cut.isoformat(), "sessions": len(sessions),
         "first_session": sessions[0].isoformat(), "decision_days_published": sorted(published),
         "A": {**_agent_summary(sims["A"], rets["A"], seed), "vs_C": a_vs_c,
@@ -179,7 +179,7 @@ def publish(root: Path, as_of: date, secret: str, fetch=marketdata.fetch,
         "C": _agent_summary(sims["C"], rets["C"], seed),
         "D": {**_agent_summary(sims["D"], rets["D"], seed), "vs_C": _vs_c(rets["D"], rets["C"], seed)},
         "trades_by_week": {k: _trades_by_week(sims[k]) for k in ("A", "C", "D")},
-        "reliability": {"failed_days": fsum, "review": review, "answered": len(answered),
+        "reliability": {"failed_days": {k: v for k, v in fsum.items() if k != "inconclusive"}, "review": review, "answered": len(answered),
                         "review_share": review / len(answered) if answered else None,
                         "review_over_10pct": bool(answered) and review / len(answered) > 0.10,
                         "llm_retries": sum(r.get("retries", 0) for r in rel),
@@ -187,7 +187,7 @@ def publish(root: Path, as_of: date, secret: str, fetch=marketdata.fetch,
                         "failed_data_sources": dict(sorted(src.items())),
                         "voided_decision_days": sorted(d.isoformat() for d in voided_days),
                         "stopped_for_cost": stopped,
-                        "verdict_inconclusive_by_rule": stopped or fsum["inconclusive"]},
+                        "more_than_5_failed_days": fsum["inconclusive"]},
         "cost": {"usd_total": sum(cost_by_day.values()),
                  "usd_per_day": dict(sorted(cost_by_day.items()))},
     }
@@ -209,7 +209,9 @@ def render_markdown(r: dict) -> str:
     return "\n".join([
         f"# Honest Arena weekly report, {r['as_of']}",
         "",
-        f"Interim, through session {r['cutoff_session']} ({r['sessions']} sessions). Data is published "
+        f"**{r['label']}.**",
+        "",
+        f"Figures through session {r['cutoff_session']} ({r['sessions']} sessions). Data is published "
         "with a delay of at least 5 trading days. Not investment advice.",
         "",
         "| | A (TradingAgents) | C (buy-and-hold) | D (random) |",

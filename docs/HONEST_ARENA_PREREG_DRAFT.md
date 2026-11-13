@@ -1,8 +1,10 @@
-# Honest Arena — Pre-registration (DRAFT v0.5, not frozen)
+# Honest Arena — Pre-registration (DRAFT v0.6, not frozen)
 
-Paper Trail Lab · draft 2026-11-13 (v0.5; v0.4–v0.1 earlier the same week, v0.1 after the 4a investigation) · to be frozen (signed commit + SHA-256 + OpenTimestamps) on or before 2026-11-29, before the first scored trading day.
+Paper Trail Lab · draft 2026-11-13 (v0.6; v0.5–v0.1 earlier the same week, v0.1 after the 4a investigation) · to be frozen (signed commit + SHA-256 + OpenTimestamps) on Sunday 2026-11-22, before the first scored decision (after the US close on Monday 2026-11-23).
 
-Items marked **[PILOT]** are filled in from the pilot week (2026-11-23 → 11-27). The pilot may only settle feasibility questions: cost, data availability, run time, output parsing. Pilot returns are never computed or looked at. Pilot runs write only to `arena-data/pilot/`; pilot output is never scored and never decrypted publicly. The pilot report covers run success, timing, cost, retries, failed data sources and the REVIEW count, and no labels or returns.
+Items marked **[PILOT]** are filled in from the pilot week (Monday 2026-11-16 → Friday 2026-11-20, 5 trading days). The pilot may only settle feasibility questions: cost, data availability, run time, output parsing. Pilot returns are never computed or looked at. Pilot runs write only to `arena-data/pilot/`; pilot output is never scored and never decrypted publicly. The pilot report covers run success, timing, cost, retries, failed data sources and the REVIEW count, and no labels or returns.
+
+Changes in v0.6 (2026-11-13, before any data): all dates move one week earlier (pilot 16–20 Nov, freeze 22 Nov, first scored decision 23 Nov, scored period 24 Nov 2026 – 22 Feb 2027); the price source is confirmed; the weekly report carries no verdict wording.
 
 Changes in v0.5 (2026-11-13, before any scored data): seeds fixed (D: 20261130, bootstrap: 20270226); the Gemini client's own retries set to 2; the price source for the simulation is named; how section 11 is implemented is stated; the pilot's separation is stated.
 
@@ -48,7 +50,7 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
 
 ## 5. Schedule
 
-- **Scored period:** 60 US trading days starting 2026-11-30 [PILOT: exact last day].
+- **Scored period:** the 60 US trading days from Tuesday 2026-11-24 to Monday 2027-02-22 (NYSE calendar). The first scored decisions are made after the US close on Monday 2026-11-23 and filled at the open on 2026-11-24; C buys at that open.
 - **Daily run:** after the US close on GitHub Actions. A receives the date and each ticker and produces one label per ticker for the next session.
 - **Commitment:** all decisions are written to the ledger, hashed, and the hash is pushed to the public repo before the next US open. A decision committed after the open is void and counts as "hold".
 - **Retries (infrastructure, not an agent change):** an LLM call that fails with a rate-limit (429) or server (5xx) error is sent again by the harness, at most 3 attempts per call in total, after waits of about 30 and 60 seconds. The identical request is repeated; prompts and the agent are unchanged. The Gemini client's own retries are set to 2 (3 attempts per request), so one call sends at most 9 requests. Every retry is logged in the ledger.
@@ -62,7 +64,7 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
 - **Fills:** at the next session's opening price.
 - **Costs:** 10 basis points per side.
 - Cash earns nothing.
-- **Prices:** daily split-adjusted opening and closing prices from Yahoo Finance (via yfinance, TradingAgents' own default source), fetched when results are computed and never stored or published. Dividends are not credited. The S&P 500 comparison uses the index's daily closes from the same source. [OWNER: confirm before freeze]
+- **Prices:** daily split-adjusted opening and closing prices from Yahoo Finance (via yfinance, TradingAgents' own default source), fetched when results are computed and never stored or published. Dividends are not credited. The S&P 500 comparison uses the index's daily closes from the same source.
 
 ## 7. Agent memory
 
@@ -108,7 +110,7 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
 
 ## 11. Publication
 
-- **Weekly report (Mondays):** the metrics from section 8 so far, plus run reliability and cost.
+- **Weekly report (Mondays):** the metrics from section 8 so far, plus run reliability and cost. It shows only the numbers and the interval, labelled "interim — no verdict before the end"; no PASS, FAIL or INCONCLUSIVE wording appears before the final report.
 - **Trades:** published only with a delay of at least 5 trading days and aggregated. No current positions are shown.
 - **Final report:** within 7 days of the last scored day. It contains:
   - the verdict;

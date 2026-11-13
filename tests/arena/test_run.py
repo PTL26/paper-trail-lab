@@ -116,3 +116,12 @@ def test_scored_phase_is_refused_until_enabled_and_pilot_stays_in_pilot(repo):
         runmod.main(["--repo-root", str(root), "--day", "2026-11-30", "--now", AFTER.isoformat(), "--phase", "scored"])
     assert run(root) == 0
     assert sorted(p.name for p in (root / "arena-data").iterdir()) == ["pilot"]
+
+
+def test_committed_dates_match_draft_v06():
+    cfg = json.loads((Path(runmod.__file__).parent / "config.json").read_text())
+    assert cfg["first_decision_day"] == "2026-11-23" and cfg["scored_enabled"] is False
+    from arena.calendar import next_session, sessions_between
+    assert next_session(date(2026, 11, 23)) == date(2026, 11, 24)
+    assert sessions_between(date(2026, 11, 24), date(2027, 2, 22))[-1] == date(2027, 2, 22)
+    assert len(sessions_between(date(2026, 11, 24), date(2027, 2, 22))) == 60

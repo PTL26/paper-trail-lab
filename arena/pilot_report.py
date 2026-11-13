@@ -1,4 +1,4 @@
-"""Pilot report (23-27 Nov): run success, timing, cost, retries, failed data sources, REVIEW count.
+"""Pilot report (16-20 Nov 2026): run success, timing, cost, retries, failed data sources, REVIEW count.
 
 Reads <data_root>/pilot only, decrypting locally with the owner's key. Prints no labels, no REVIEW
 text and no returns; pilot output is never scored and never decrypted publicly.
