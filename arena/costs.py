@@ -9,6 +9,7 @@ from .ledger import Ledger
 from .models import Usage
 
 Prices = Dict[str, Tuple[float, float]]  # model -> USD per million tokens (input, output)
+MONTHLY_LIMIT_EUR = 15.0  # owner budget, 2026-11-13 (draft v0.2 section 10)
 
 
 def usd_cost(u: Usage, prices: Prices) -> float:
@@ -17,14 +18,17 @@ def usd_cost(u: Usage, prices: Prices) -> float:
 
 
 class CostLog:
-    def __init__(self, ledger: Ledger, prices: Prices):
-        self.ledger, self.prices = ledger, prices
+    def __init__(self, ledger: Ledger, prices: Prices, table_sha256: Optional[str] = None):
+        self.ledger, self.prices, self.table_sha256 = ledger, prices, table_sha256
 
     def record(self, agent: str, ticker: str, day: date, usage: Usage) -> float:
         usd = usd_cost(usage, self.prices)
         self.ledger.append({"type": "cost", "agent": agent, "ticker": ticker, "day": day.isoformat(),
                             "model": usage.model, "tokens_in": usage.tokens_in, "tokens_out": usage.tokens_out,
-                            "calls": usage.calls, "usd": usd})
+                            "calls": usage.calls, "usd": usd,
+                            "usd_per_mtok_in": self.prices[usage.model][0],
+                            "usd_per_mtok_out": self.prices[usage.model][1],
+                            "price_table": self.table_sha256})
         return usd
 
 
@@ -33,9 +37,13 @@ def is_stopped(ledger: Ledger, agent: str) -> bool:
 
 
 class MonthlyGuard:
-    """If total LLM spend in a calendar month exceeds the limit, `agent` (A) is stopped for good."""
+    """If total LLM spend in a calendar month exceeds the limit, `agent` (A) is stopped for good.
 
-    def __init__(self, ledger: Ledger, limit_eur: float = 40.0, usd_per_eur: float = 1.0, agent: str = "A"):
+    usd_per_eur defaults to 1.0, which counts every dollar as a euro: while the euro is worth more than
+    a dollar this overstates spend in euros, so the stop can only come early, never late."""
+
+    def __init__(self, ledger: Ledger, limit_eur: float = MONTHLY_LIMIT_EUR, usd_per_eur: float = 1.0,
+                 agent: str = "A"):
         self.ledger, self.limit_eur, self.usd_per_eur, self.agent = ledger, limit_eur, usd_per_eur, agent
 
     def spend_eur(self, month: str) -> float:

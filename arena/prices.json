@@ -1,0 +1,11 @@
+{
+  "source": "https://aistudio.google.com/docs/pricing",
+  "retrieved": "2026-11-13",
+  "tier": "Gemini Developer API, paid tier, Standard",
+  "unit": "USD per 1,000,000 tokens",
+  "notes": "Output price includes thinking tokens. Cached input is billed here at the full input rate (overstates cost). The free tier is free of charge; costs are still logged at paid rates so the monthly guard never under-counts.",
+  "models": {
+    "gemini-3.5-flash-lite": {"input": 0.30, "output": 2.50},
+    "gemini-3.1-flash-lite": {"input": 0.25, "output": 1.50}
+  }
+}

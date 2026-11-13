@@ -7,8 +7,16 @@ dependencies = [
     "pyrage>=1.3.0",
 ]
 
+[project.optional-dependencies]
+agent-a = [
+    "tradingagents ; python_full_version >= '3.11'",
+]
+
 [dependency-groups]
 dev = ["pytest>=8"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.uv.sources]
+tradingagents = { git = "https://github.com/TauricResearch/TradingAgents", rev = "c4544913a14ed3df5f1ed7b9e8483270ce20682a" }

@@ -69,3 +69,9 @@ def test_euro_conversion(tmp_path):
     assert guard.check(date(2026, 12, 1)) is None
     log.record("A", "AAPL", date(2026, 12, 2), Usage("pricey", 200_000, 0))    # $51 = EUR 40.8
     assert guard.check(date(2026, 12, 2))["spend_eur"] == pytest.approx(40.8)
+
+
+def test_monthly_limit_is_the_owner_budget():
+    from arena.costs import MONTHLY_LIMIT_EUR
+    assert MONTHLY_LIMIT_EUR == 15.0
+    assert MonthlyGuard(Ledger("unused.jsonl")).limit_eur == 15.0

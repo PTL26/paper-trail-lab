@@ -24,7 +24,7 @@ class FakeGraph:
         s = self.signals[ticker]
         if isinstance(s, Exception):
             raise s
-        return {"final_trade_decision": "..."}, s
+        return {"final_trade_decision": f"raw text for {ticker}"}, s
 
 
 class Usage:
@@ -82,3 +82,11 @@ def test_buy_and_hold_buys_equal_weight_once():
     assert all(d.label is None and abs(d.target_weight - 1 / 3) < 1e-12 for d in first)
     later = c.decide(TICKERS, date(2026, 11, 30), VIEW)
     assert all(d.label == "Hold" and d.target_weight is None for d in later)
+
+
+def test_review_raw_text_is_kept_for_the_report_and_run_time_measured():
+    g = FakeGraph({"AAPL": "Buy", "MSFT": "REVIEW"})
+    a = TradingAgentsAdapter(graph_factory=lambda: g, model="m", track_usage=fake_tracker)
+    a.decide(["AAPL", "MSFT"], D, VIEW)
+    assert a.reviews == [{"ticker": "MSFT", "day": "2026-11-27", "signal": "REVIEW", "text": "raw text for MSFT"}]
+    assert set(a.seconds) == {("AAPL", D), ("MSFT", D)} and all(v >= 0 for v in a.seconds.values())

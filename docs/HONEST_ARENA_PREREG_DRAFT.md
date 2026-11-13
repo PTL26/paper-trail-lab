@@ -1,8 +1,10 @@
-# Honest Arena — Pre-registration (DRAFT v0.1, not frozen)
+# Honest Arena — Pre-registration (DRAFT v0.2, not frozen)
 
-Paper Trail Lab · draft 2026-11-12 (v0.1 after the 4a investigation) · to be frozen (signed commit + SHA-256 + OpenTimestamps) on or before 2026-11-29, before the first scored trading day.
+Paper Trail Lab · draft 2026-11-13 (v0.2; v0.1 2026-11-12 after the 4a investigation) · to be frozen (signed commit + SHA-256 + OpenTimestamps) on or before 2026-11-29, before the first scored trading day.
 
 Items marked **[PILOT]** are filled in from the pilot week (2026-11-23 → 11-27). The pilot may only settle feasibility questions: cost, data availability, run time, output parsing. Pilot returns are never computed or looked at.
+
+Changes in v0.2 (2026-11-13, owner budget, before any data): the monthly LLM cost cap in section 10 is lowered from €40 to €15.
 
 Changes from v0: ai-hedge-fund moved out of the first run (its data provider is paid and its licence may not allow public use); model choice now favours Gemini Flash-Lite on cost; rules added for TradingAgents' REVIEW label and its memory file.
 
@@ -36,7 +38,7 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
 ## 4. Universe
 
 - Fixed for the whole test: AAPL, MSFT, NVDA, AMZN, GOOGL, META, TSLA, JPM, XOM, UNH.
-- The pilot may enlarge it to at most 20 stocks, only if the projected LLM cost stays under €30 per month. Any added stocks are chosen before freeze as the next largest US stocks by market capitalisation on 2026-11-27, and listed here.
+- The pilot may enlarge it to at most 20 stocks, only if the projected LLM cost stays under €30 per month. [OPEN: this threshold is above the €15 cap in section 10 since v0.2 and must be set again before freeze.] Any added stocks are chosen before freeze as the next largest US stocks by market capitalisation on 2026-11-27, and listed here.
 
 ## 5. Schedule
 
@@ -84,7 +86,7 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
 
 ## 10. Stop and failure rules
 
-- **Cost:** if LLM spend exceeds €40 in any calendar month, A is stopped. Its verdict becomes INCONCLUSIVE ("stopped for cost"), and the stop is announced.
+- **Cost:** if LLM spend exceeds €15 in any calendar month, A is stopped. Its verdict becomes INCONCLUSIVE ("stopped for cost"), and the stop is announced.
 - **Data or run outages:**
   - A failed day counts as "hold" for A.
   - More than 5 failed days makes A's verdict INCONCLUSIVE.
