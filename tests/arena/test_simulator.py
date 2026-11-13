@@ -129,3 +129,15 @@ def test_commit_exactly_at_the_open_is_void():
     at_open = {D0: datetime(2026, 11, 27, 14, 30, tzinfo=UTC)}  # must be pushed *before* the open
     r = simulate({D0: [dec(D0, "AAPL", "Buy")]}, PRICES, sessions=[D1], commit_times=at_open)
     assert r.trades == [] and r.voided == [(D0, "AAPL")]
+
+
+def test_failed_day_is_hold_on_every_stock():
+    # draft v0.3 section 10: 3 or more failed stocks make the whole day hold for A
+    tickers = [f"T{i}" for i in range(10)]
+    px = bars({D0: {t: (10, 10) for t in tickers}, D1: {t: (10, 10) for t in tickers}})
+    decs = [dec(D0, t, "Buy", error="X" if i < 3 else None) for i, t in enumerate(tickers)]
+    r = simulate({D0: decs}, px, sessions=[D1], commit_times=EVENING)
+    assert r.trades == [] and r.failed_days == [D0]
+    decs = [dec(D0, t, "Buy", error="X" if i < 2 else None) for i, t in enumerate(tickers)]
+    r = simulate({D0: decs}, px, sessions=[D1], commit_times=EVENING)
+    assert len(r.trades) == 8 and r.failed_days == []

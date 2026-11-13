@@ -9,16 +9,19 @@ from typing import Dict, Iterable, Mapping, Optional, Sequence
 from .metrics import MAX_FAILED_DAYS, alpha_series, block_bootstrap_ci, daily_returns
 from .models import REVIEW, Decision
 
-ANNOUNCE_STREAK = 3  # more than 3 failed days in a row is announced the same week
+ANNOUNCE_STREAK = 3          # more than 3 failed days in a row is announced the same week
+FAILED_TICKERS_FOR_DAY = 3   # draft v0.3: 3 or more of the 10 stocks failed -> failed day
 
 
-def day_status(decisions: Iterable[Decision], tickers: Sequence[str], voided: Iterable[str] = ()) -> str:
-    """'ok' if every ticker has a usable, committed decision; 'failed' if none has; else 'partial'.
-    REVIEW is an answer (hold), not a failure."""
-    bad = set(voided)
-    usable = {d.ticker for d in decisions if not d.failed and d.ticker not in bad}
-    n = sum(t in usable for t in tickers)
-    return "ok" if n == len(tickers) else "failed" if n == 0 else "partial"
+def ticker_failures(decisions: Iterable[Decision], tickers: Sequence[str]) -> int:
+    """Stocks with no usable decision (failed or missing). REVIEW is an answer (hold), not a failure."""
+    usable = {d.ticker for d in decisions if not d.failed}
+    return sum(t not in usable for t in tickers)
+
+
+def is_failed_day(decisions: Iterable[Decision], tickers: Sequence[str], committed_in_time: bool) -> bool:
+    """Draft v0.3 section 10: not committed before the next open, or 3+ stocks without a decision."""
+    return not committed_in_time or ticker_failures(decisions, tickers) >= FAILED_TICKERS_FOR_DAY
 
 
 def _longest(flags: Sequence[bool]) -> int:
@@ -29,17 +32,13 @@ def _longest(flags: Sequence[bool]) -> int:
     return best
 
 
-def failed_day_summary(statuses: Mapping[date, str]) -> dict:
-    """Both readings of 'failed day': the whole run failed ('whole'), or any ticker failed ('any')."""
-    seq = [statuses[d] for d in sorted(statuses)]
-    whole = [s == "failed" for s in seq]
-    anyf = [s != "ok" for s in seq]
-    out = {"days": len(seq), "failed_whole": sum(whole), "failed_any": sum(anyf),
-           "longest_streak_whole": _longest(whole), "longest_streak_any": _longest(anyf)}
-    for k in ("whole", "any"):
-        out[f"inconclusive_{k}"] = out[f"failed_{k}"] > MAX_FAILED_DAYS
-        out[f"announce_{k}"] = out[f"longest_streak_{k}"] > ANNOUNCE_STREAK
-    return out
+def failed_day_summary(failed: Mapping[date, bool], single_failures: Mapping[date, int]) -> dict:
+    """`single_failures`: per day, stocks that failed on days that were not failed days (reliability)."""
+    seq = [failed[d] for d in sorted(failed)]
+    n = sum(seq)
+    return {"days": len(seq), "failed_days": n, "longest_streak": _longest(seq),
+            "inconclusive": n > MAX_FAILED_DAYS, "announce": _longest(seq) > ANNOUNCE_STREAK,
+            "single_ticker_failures": sum(v for d, v in single_failures.items() if not failed.get(d, False))}
 
 
 def review_summary(decisions: Iterable[Decision]) -> dict:

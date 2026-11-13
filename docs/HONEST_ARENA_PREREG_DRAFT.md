@@ -1,8 +1,10 @@
-# Honest Arena — Pre-registration (DRAFT v0.2, not frozen)
+# Honest Arena — Pre-registration (DRAFT v0.3, not frozen)
 
-Paper Trail Lab · draft 2026-11-13 (v0.2; v0.1 2026-11-12 after the 4a investigation) · to be frozen (signed commit + SHA-256 + OpenTimestamps) on or before 2026-11-29, before the first scored trading day.
+Paper Trail Lab · draft 2026-11-13 (v0.3; v0.2 and v0.1 earlier the same week, v0.1 after the 4a investigation) · to be frozen (signed commit + SHA-256 + OpenTimestamps) on or before 2026-11-29, before the first scored trading day.
 
 Items marked **[PILOT]** are filled in from the pilot week (2026-11-23 → 11-27). The pilot may only settle feasibility questions: cost, data availability, run time, output parsing. Pilot returns are never computed or looked at.
+
+Changes in v0.3 (2026-11-13, before any data): the universe is fixed at 10 stocks (enlargement clause removed); the rule for choosing between the two Gemini Flash-Lite models is stated; a failed day is defined.
 
 Changes in v0.2 (2026-11-13, owner budget, before any data): the monthly LLM cost cap in section 10 is lowered from €40 to €15.
 
@@ -31,14 +33,14 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
 ## 3. Model
 
 - A uses one LLM for every role: Gemini Flash-Lite [PILOT: exact model id], with the project's default temperature and settings.
+- Both gemini-3.5-flash-lite and gemini-3.1-flash-lite are tried in the pilot. gemini-3.5-flash-lite is chosen if it runs within the Gemini free tier, or if its projected paid-tier cost is at most €15 per month; otherwise gemini-3.1-flash-lite. The owner confirms the choice before freeze.
 - Fallback: Claude Haiku [PILOT: exact model id], only if Flash-Lite fails the pilot on reliability (more than 1 failed run in 5 days).
 - The model is chosen in the pilot by cost and reliability only, never by results.
 - If the provider retires the model during the test, the closest successor is used and logged as an amendment.
 
 ## 4. Universe
 
-- Fixed for the whole test: AAPL, MSFT, NVDA, AMZN, GOOGL, META, TSLA, JPM, XOM, UNH.
-- The pilot may enlarge it to at most 20 stocks, only if the projected LLM cost stays under €30 per month. [OPEN: this threshold is above the €15 cap in section 10 since v0.2 and must be set again before freeze.] Any added stocks are chosen before freeze as the next largest US stocks by market capitalisation on 2026-11-27, and listed here.
+- Fixed for the whole test at these 10 stocks: AAPL, MSFT, NVDA, AMZN, GOOGL, META, TSLA, JPM, XOM, UNH.
 
 ## 5. Schedule
 
@@ -88,7 +90,9 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
 
 - **Cost:** if LLM spend exceeds €15 in any calendar month, A is stopped. Its verdict becomes INCONCLUSIVE ("stopped for cost"), and the stop is announced.
 - **Data or run outages:**
-  - A failed day counts as "hold" for A.
+  - A **failed day** is a day whose decisions were not committed before the next open, or on which A failed to produce a decision for 3 or more of the 10 stocks.
+  - A failed day counts as "hold" for A on every stock.
+  - On other days, a stock A failed to decide counts as "hold" for that stock; these single-stock failures are reported as a reliability metric and do not count as failed days.
   - More than 5 failed days makes A's verdict INCONCLUSIVE.
   - More than 3 failed days in a row is announced the same week.
 - **Harness bugs:**

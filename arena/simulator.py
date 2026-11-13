@@ -35,6 +35,7 @@ class SimResult:
     nav: Dict[date, float] = field(default_factory=dict)
     turnover: Dict[date, float] = field(default_factory=dict)
     voided: List[Tuple[date, str]] = field(default_factory=list)
+    failed_days: List[date] = field(default_factory=list)
 
 
 def _next_session(day: date, sessions: Sequence[date]) -> Optional[date]:
@@ -42,9 +43,11 @@ def _next_session(day: date, sessions: Sequence[date]) -> Optional[date]:
 
 
 def simulate(decisions: Mapping[date, Sequence[Decision]], bars: Bars, sessions: Sequence[date],
-             commit_times: Mapping[date, datetime], capital: float = CAPITAL, cost_bps: float = COST_BPS) -> SimResult:
+             commit_times: Mapping[date, datetime], capital: float = CAPITAL, cost_bps: float = COST_BPS,
+             failed_day_min: int = 3) -> SimResult:
     """`decisions` maps a decision day D to one agent's decisions; they trade at the first session after D.
-    `commit_times` maps D to the time its decisions were committed (pushed)."""
+    `commit_times` maps D to the time its decisions were committed (pushed). A day with `failed_day_min`
+    or more failed decisions is a failed day: hold on every stock (draft v0.3 section 10)."""
     for d, t in commit_times.items():
         require_aware(t, f"commit time for {d}")
     sessions = sorted(sessions)
@@ -64,6 +67,9 @@ def simulate(decisions: Mapping[date, Sequence[Decision]], bars: Bars, sessions:
             ct = commit_times.get(d)
             if ct is None or ct >= session_open(s):
                 res.voided.extend((d, x.ticker) for x in decisions[d])
+                continue
+            if sum(x.failed for x in decisions[d]) >= failed_day_min:
+                res.failed_days.append(d)
                 continue
             for x in decisions[d]:
                 w = target_weight(x)
