@@ -84,7 +84,11 @@ def main(argv=None) -> int:
     from .usage import UsageCounter
 
     if args.env_file:
-        load_env_file(Path(args.env_file).expanduser())
+        env_file = Path(args.env_file).expanduser()
+        if not env_file.is_file():
+            print(f"env file not found: {env_file}")
+            return 2
+        load_env_file(env_file)
     status = env_status()
     print("keys present:", ", ".join(f"{k}={'yes' if v else 'no'}" for k, v in status.items()))
     if not all(status.values()):
