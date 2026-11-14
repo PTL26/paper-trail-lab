@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Honest Arena: a pre-registered 12-week forward paper test of TradingAgents against buy-and-hold and a random agent. Not investment advice.">
+<title>Honest Arena</title>
+<link rel="icon" href="data:,">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f7f6f2; --surface: #fcfcfb; --line: #e2e0d9; --ink: #0b0b0b; --ink-2: #52514e; --ink-3: #75736c;
+  --accent: #1c5cab; --bad: #d03b3b; --code: #efede7;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --bg: #121211; --surface: #1a1a19; --line: #34332f; --ink: #ffffff; --ink-2: #c3c2b7; --ink-3: #9a988f;
+    --accent: #86b6ef; --bad: #e66767; --code: #232321;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface: #1a1a19; --line: #34332f; --ink: #ffffff; --ink-2: #c3c2b7; --ink-3: #9a988f;
+  --accent: #86b6ef; --bad: #e66767; --code: #232321;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 760px; margin: 0 auto; padding: 48px 16px 40px; }
+a { color: var(--accent); }
+.eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+h1 { font-size: clamp(28px, 6vw, 40px); line-height: 1.15; margin: 8px 0 12px; letter-spacing: -0.015em; }
+h2.section { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin: 40px 0 12px; }
+.lede { color: var(--ink-2); margin: 0 0 32px; }
+.cards { display: grid; gap: 14px; }
+.card { display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 18px 20px; color: inherit; text-decoration: none; min-width: 0; }
+a.card:hover, a.card:focus-visible { border-color: var(--accent); }
+.card h3 { font-size: 18px; margin: 4px 0 4px; color: var(--accent); }
+.card p { margin: 0; color: var(--ink-2); font-size: 15px; }
+.tag { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-3); }
+.tag.fail { color: var(--bad); }
+pre { margin: 10px 0 0; background: var(--code); border-radius: 8px; padding: 12px 14px; overflow-x: auto;
+  font: 13.5px/1.6 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--ink); }
+.arena { border-left: 3px solid var(--accent); padding: 4px 0 4px 14px; margin: 0; }
+.signup { margin: 18px 0 0; }
+.button { display: inline-block; background: var(--accent); color: var(--bg); text-decoration: none; font-weight: 600;
+  font-size: 15px; padding: 11px 18px; border-radius: 8px; }
+.button:hover, .button:focus-visible { filter: brightness(1.1); }
+.meta { font-size: 13px; color: var(--ink-3); margin: 0 0 24px; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; margin: 4px 0 8px; }
+th, td { text-align: left; vertical-align: top; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); }
+th { font-weight: 600; color: var(--ink-2); white-space: nowrap; }
+.placeholder { background: var(--surface); border: 1px dashed var(--line); border-radius: 10px; padding: 12px 16px;
+  color: var(--ink-2); margin: 0; }
+p { overflow-wrap: anywhere; }
+footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-2); }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="eyebrow">Paper Trail Lab / Honest Arena</div>
+  <h1>Honest Arena</h1>
+  <p class="meta">Page date: 14 November 2026 · Not investment advice.</p>
+  <p class="lede">Honest Arena tests whether the most-starred open-source AI trading agent on GitHub,
+    TauricResearch/TradingAgents, run in its default configuration the way an ordinary user would run it,
+    earns returns beyond plain market exposure. It runs as a 12-week forward paper test: each decision is
+    committed before the next US market open, so results cannot be chosen after the fact. Every rule —
+    participants, costs, metrics and the pass/fail verdict — is written down and frozen before the first
+    scored day, because a test whose rules can move after the data is seen proves nothing. This tests
+    software; it is not a recommendation to buy, sell or hold anything.</p>
+
+  <h2 class="section">Participants</h2>
+  <table>
+    <tr><th>A</th><td>TradingAgents v0.7.1 (Apache-2.0), default pipeline with memory on, one model for every
+      role (Gemini 3.1 Flash-Lite). One rating per stock per day for 10 large US stocks.</td></tr>
+    <tr><th>C</th><td>Buy-and-hold: equal weight in the same 10 stocks, bought on day 1, never rebalanced.
+      The benchmark A must beat.</td></tr>
+    <tr><th>D</th><td>Random agent: draws one of A's five ratings at random for each stock each day, with a
+      fixed published seed. Shows what chance looks like under the same rules.</td></tr>
+  </table>
+
+  <h2 class="section">Schedule</h2>
+  <table>
+    <tr><th>Pilot</th><td>16–20 November 2026. Feasibility only (cost, run time, data); never scored.</td></tr>
+    <tr><th>Freeze</th><td>22 November 2026. The pre-registration is signed, hashed and timestamped.</td></tr>
+    <tr><th>Scored period</th><td>24 November 2026 – 22 February 2027 (60 US trading days).</td></tr>
+    <tr><th>Final report</th><td>By 1 March 2027, with the verdict, the full ledgers and the decryption
+      key for the committed data.</td></tr>
+  </table>
+
+  <h2 class="section">Pre-registration</h2>
+  <p>The rules: <a href="https://github.com/PTL26/paper-trail-lab/blob/main/docs/HONEST_ARENA_PREREG_DRAFT.md">HONEST_ARENA_PREREG_DRAFT.md</a> (draft until the freeze).</p>
+  <p class="placeholder">Pre-registration hash: published at freeze on 22 Nov.</p>
+
+  <h2 class="section">Weekly reports</h2>
+  <p class="placeholder">No reports yet. The first one follows week 1 of the scored period and is due on
+    Monday 7 December 2026; data is published with a delay of at least 5 trading days. Weekly figures are
+    interim — no verdict before the end.</p>
+
+  <p class="signup" id="signup"><a class="button" href="https://papertraillab.substack.com/subscribe" rel="noopener">Get updates by email — free</a></p>
+
+  <footer>
+    <div><b><a href="../">Paper Trail Lab</a></b> · <a href="../arena/">Honest Arena</a> ·
+      <a href="../corrections/">Corrections</a> · Content and data: CC BY 4.0 · Code: MIT ·
+      <a href="https://github.com/PTL26/paper-trail-lab">Source</a></div>
+    <div>Research and engineering only. Not investment advice.</div>
+  </footer>
+</main>
+</body>
+</html>

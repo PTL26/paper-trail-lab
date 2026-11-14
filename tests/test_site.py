@@ -20,7 +20,8 @@ def assemble(tmp_path):
 def test_site_layout(tmp_path):
     out = assemble(tmp_path)
     assert sorted(p.relative_to(out).as_posix() for p in out.rglob("*") if p.is_file()) == [
-        ".nojekyll", "index.html", "lie-detector/index.html", "t1-explorer/index.html"]
+        ".nojekyll", "arena/index.html", "corrections/index.html", "index.html", "lie-detector/index.html",
+        "t1-explorer/index.html"]
     assert (out / "t1-explorer" / "index.html").read_bytes() == (ROOT / "t1-explorer" / "index.html").read_bytes()
     assert (out / "lie-detector" / "index.html").read_bytes() == (ROOT / "site" / "lie-detector" / "index.html").read_bytes()
 
@@ -31,7 +32,7 @@ def test_landing_page_is_self_contained_and_links_resolve(tmp_path):
     assert build.external_requests(html) == [] and build.plain_http(html) == []
     links = re.findall(r'href="([^"]+)"', html)
     local = [h for h in links if not h.startswith(("https://", "data:"))]
-    assert sorted(set(local)) == ["lie-detector/", "t1-explorer/"]
+    assert sorted(set(local)) == ["arena/", "corrections/", "lie-detector/", "t1-explorer/"]
     assert all((out / h / "index.html").is_file() for h in local)
     assert any(h == "https://github.com/PTL26/paper-trail-lab/tree/main/skills/pre-registration" for h in links)
     assert (ROOT / "skills" / "pre-registration" / "SKILL.md").is_file()
@@ -68,7 +69,7 @@ def test_workflow_pins_actions_and_publishes_the_assembled_site():
 def test_no_page_loads_anything_from_a_third_party_host(tmp_path):
     out = assemble(tmp_path)
     pages = sorted(out.rglob("*.html"))
-    assert len(pages) == 3
+    assert len(pages) == 5
     for page in pages:
         html = page.read_text(encoding="utf-8")
         assert build.external_requests(html) == [], page.relative_to(out)
@@ -80,8 +81,41 @@ SUBSCRIBE = "https://papertraillab.substack.com/subscribe"
 
 def test_every_page_links_to_email_sign_up(tmp_path):
     out = assemble(tmp_path)
-    for rel in ("index.html", "t1-explorer/index.html", "lie-detector/index.html"):
+    for rel in ("index.html", "t1-explorer/index.html", "lie-detector/index.html", "arena/index.html",
+                "corrections/index.html"):
         html = (out / rel).read_text(encoding="utf-8")
         assert f'href="{SUBSCRIBE}"' in html, rel
         assert "Get updates by email — free" in html, rel
         assert "<iframe" not in html, rel
+
+
+def test_arena_page(tmp_path):
+    out = assemble(tmp_path)
+    html = (out / "arena" / "index.html").read_text(encoding="utf-8")
+    assert "<title>Honest Arena</title>" in html and "Not investment advice" in html
+    assert "Page date: 14 November 2026" in html
+    for text in ("16–20 November 2026", "22 November 2026", "24 November 2026 – 22 February 2027",
+                 "By 1 March 2027", "Pre-registration hash: published at freeze on 22 Nov.", "Weekly reports"):
+        assert text in html, text
+    for p in ("<th>A</th>", "<th>C</th>", "<th>D</th>"):
+        assert p in html
+    assert 'href="https://github.com/PTL26/paper-trail-lab/blob/main/docs/HONEST_ARENA_PREREG_DRAFT.md"' in html
+    assert (ROOT / "docs" / "HONEST_ARENA_PREREG_DRAFT.md").is_file()
+    for h in re.findall(r'href="(\.\./[^"]*)"', html):
+        assert (out / "arena" / h / "index.html").resolve().is_file(), h
+    assert "prefers-color-scheme: dark" in html and 'name="viewport"' in html
+
+
+def test_corrections_page(tmp_path):
+    out = assemble(tmp_path)
+    html = (out / "corrections" / "index.html").read_text(encoding="utf-8")
+    assert "<h1>Corrections</h1>" in html and "No corrections yet." in html
+    assert "past committed decisions are never edited" in html
+    for h in re.findall(r'href="(\.\./[^"]*)"', html):
+        assert (out / "corrections" / h / "index.html").resolve().is_file(), h
+
+
+def test_landing_footer_links_the_new_pages():
+    html = (ROOT / "site" / "index.html").read_text(encoding="utf-8")
+    footer = html[html.index("<footer>"):]
+    assert 'href="arena/"' in footer and 'href="corrections/"' in footer
