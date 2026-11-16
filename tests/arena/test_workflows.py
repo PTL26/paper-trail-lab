@@ -12,8 +12,18 @@ def active_lines(p):
     return [l for l in p.read_text().splitlines() if l.strip() and not l.lstrip().startswith("#")]
 
 
-def test_schedule_is_disabled():
-    for p in (DAILY, NETCHECK, WEEKLY):
+def test_daily_schedule_is_the_pilot_only_cron():
+    lines = active_lines(DAILY)
+    assert any(re.match(r"\s*schedule\s*:", l) for l in lines)
+    crons = [l for l in lines if "cron:" in l]
+    assert len(crons) == 1 and '"15 21 * * 1-5"' in crons[0]
+    text = "\n".join(lines)
+    assert 'if [ "$EVENT" = "schedule" ]; then' in text
+    assert "python -m arena.run --scheduled\n" in text   # no --phase, no --day on the scheduled path
+
+
+def test_other_schedules_are_disabled():
+    for p in (NETCHECK, WEEKLY):
         assert not any(re.match(r"\s*schedule\s*:", l) for l in active_lines(p)), p.name
         assert any("workflow_dispatch" in l for l in active_lines(p))
 
@@ -56,3 +66,9 @@ def test_weekly_publishes_only_public_with_full_history():
     assert "arena.publish" in text and "fetch-depth: 0" in text
     assert "outside arena-data/public" in text and "github-actions[bot]" in text
     assert "GOOGLE_API_KEY" not in text
+
+
+def test_deadline_check_runs_only_after_a_push():
+    text = DAILY.read_text()
+    assert 'echo "pushed=true" >> "$GITHUB_OUTPUT"' in text
+    assert "if: steps.commit.outputs.pushed == 'true'" in text

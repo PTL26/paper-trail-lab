@@ -69,10 +69,20 @@ def run(argv) -> int:
     ap.add_argument("--now")
     ap.add_argument("--phase", choices=("pilot", "scored"),
                     help="pilot writes to <data_root>/pilot only; default: config 'phase'")
+    ap.add_argument("--scheduled", action="store_true",
+                    help="the cron's run: pilot only, today's New York date, inside config 'pilot_window' only")
     a = ap.parse_args(argv)
+    if a.scheduled and (a.phase or a.day):
+        ap.error("--scheduled takes neither --phase nor --day")
     root = Path(a.repo_root).resolve()
     cfg = json.loads((root / "arena" / "config.json").read_text(encoding="utf-8"))
-    phase = a.phase or cfg["phase"]
+    phase = "pilot" if a.scheduled else (a.phase or cfg["phase"])
+    if a.scheduled:
+        day = _now(a.now).astimezone(NEW_YORK).date()
+        window = cfg.get("pilot_window")
+        if not window or not date.fromisoformat(window[0]) <= day <= date.fromisoformat(window[1]):
+            print(f"scheduled pilot run: {day} is outside the pilot window {window}; nothing to do")
+            return 0
     if phase == "scored" and not cfg.get("scored_enabled"):
         raise RuntimeError("scored runs are disabled until freeze (set scored_enabled in arena/config.json)")
     now = _now(a.now)

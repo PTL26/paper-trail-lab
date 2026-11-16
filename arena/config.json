@@ -19,5 +19,9 @@
   "bootstrap_seed": 20270226,
   "usd_per_eur": 1.0,
   "age_recipient": "age14pgwjpflksj74dhvucgh2hav8x3rpc9a88kyp94ztqq79gj3qvuqf70anr",
-  "scored_enabled": false
+  "scored_enabled": false,
+  "pilot_window": [
+    "2026-11-16",
+    "2026-11-20"
+  ]
 }

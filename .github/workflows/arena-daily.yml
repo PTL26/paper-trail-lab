@@ -1,6 +1,8 @@
 # Honest Arena daily run (draft section 5). Runs A, C and D for the day after the US close and pushes
 # the encrypted ledger, the encrypted decisions file and its SHA-256 before the next open.
-# The schedule is DISABLED until the owner enables it at freeze: manual trigger only.
+# The schedule runs the PILOT ONLY: `arena.run --scheduled` forces phase pilot, takes today's New York
+# date, and does nothing on non-trading days or outside config pilot_window (2026-11-16..2026-11-20).
+# Scored runs stay manual and are refused until scored_enabled is set at freeze.
 name: arena-daily
 
 on:
@@ -15,8 +17,8 @@ on:
         description: "Trading day YYYY-MM-DD (empty = today in New York)"
         required: false
         default: ""
-  # schedule:
-  #   - cron: "30 21 * * 1-5"   # 21:30 UTC, after the 16:00 New York close in both EST and EDT
+  schedule:
+    - cron: "15 21 * * 1-5"   # 21:15 UTC weekdays, after the 16:00 New York close (EST)
 
 permissions:
   contents: write
@@ -44,18 +46,24 @@ jobs:
           ARENA_AGE_KEY: ${{ secrets.ARENA_AGE_KEY }}
           DAY_INPUT: ${{ inputs.day }}
           PHASE_INPUT: ${{ inputs.phase }}
+          EVENT: ${{ github.event_name }}
         run: |
           DAY="${DAY_INPUT:-$(TZ=America/New_York date +%F)}"
           echo "day=$DAY" >> "$GITHUB_OUTPUT"
           set +e
-          PHASE_ARG=""
-          if [ -n "$PHASE_INPUT" ]; then PHASE_ARG="--phase $PHASE_INPUT"; fi
-          uv run --python 3.12 python -m arena.run --day "$DAY" $PHASE_ARG
+          if [ "$EVENT" = "schedule" ]; then
+            uv run --python 3.12 python -m arena.run --scheduled
+          else
+            PHASE_ARG=""
+            if [ -n "$PHASE_INPUT" ]; then PHASE_ARG="--phase $PHASE_INPUT"; fi
+            uv run --python 3.12 python -m arena.run --day "$DAY" $PHASE_ARG
+          fi
           code=$?
           set -e
           if [ "$code" = 3 ]; then echo "already run"; exit 0; fi
           exit $code
       - name: Commit and push (bot identity, UTC)
+        id: commit
         run: |
           git add -A arena-data
           if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
@@ -66,5 +74,7 @@ jobs:
               commit -m "arena: decisions ${{ steps.run.outputs.day }}"
           git pull --rebase --quiet origin "${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
       - name: Pushed before the next open?
+        if: steps.commit.outputs.pushed == 'true'
         run: uv run --python 3.12 python -m arena.run deadline --day "${{ steps.run.outputs.day }}"

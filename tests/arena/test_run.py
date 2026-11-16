@@ -125,3 +125,64 @@ def test_committed_dates_match_draft_v06():
     assert next_session(date(2026, 11, 23)) == date(2026, 11, 24)
     assert sessions_between(date(2026, 11, 24), date(2027, 2, 22))[-1] == date(2027, 2, 22)
     assert len(sessions_between(date(2026, 11, 24), date(2027, 2, 22))) == 60
+
+
+# --- scheduled pilot: the date guard -------------------------------------------------------------
+
+def scheduled(root, now):
+    return runmod.main(["--repo-root", str(root), "--scheduled", "--now", now.isoformat()])
+
+
+@pytest.fixture
+def pilot_repo(repo):
+    root, secret = repo
+    p = root / "arena" / "config.json"
+    cfg = json.loads(p.read_text())
+    cfg.update(pilot_window=["2026-11-16", "2026-11-20"], scored_enabled=False)
+    p.write_text(json.dumps(cfg))
+    return root
+
+
+@pytest.mark.parametrize("day", ["2026-11-16", "2026-11-18", "2026-11-20"])
+def test_scheduled_runs_pilot_days_inside_the_window(pilot_repo, day):
+    d = date.fromisoformat(day)
+    assert scheduled(pilot_repo, datetime(d.year, d.month, d.day, 21, 15, tzinfo=timezone.utc)) == 0
+    assert (pilot_repo / "arena-data" / "pilot" / "decisions" / f"{day}.json.sha256").exists()
+    assert sorted(p.name for p in (pilot_repo / "arena-data").iterdir()) == ["pilot"]
+
+
+@pytest.mark.parametrize("now", [
+    datetime(2026, 11, 23, 21, 15, tzinfo=timezone.utc),   # first scored decision day: never a pilot run
+    datetime(2026, 11, 24, 21, 15, tzinfo=timezone.utc),
+    datetime(2026, 12, 1, 21, 15, tzinfo=timezone.utc),
+    datetime(2026, 11, 13, 21, 15, tzinfo=timezone.utc),   # before the pilot
+    datetime(2026, 11, 21, 21, 15, tzinfo=timezone.utc),   # Saturday
+])
+def test_scheduled_does_nothing_outside_the_pilot_window(pilot_repo, now):
+    assert scheduled(pilot_repo, now) == 0
+    assert not (pilot_repo / "arena-data").exists()
+
+
+def test_scheduled_day_is_the_new_york_date(pilot_repo):
+    # 03:00 UTC on 21 Nov is still 20 Nov in New York, but before nothing: 22:00 NY on 20 Nov is after the close
+    assert scheduled(pilot_repo, datetime(2026, 11, 21, 3, 0, tzinfo=timezone.utc)) == 0
+    assert (pilot_repo / "arena-data" / "pilot" / "decisions" / "2026-11-20.json.sha256").exists()
+
+
+def test_scheduled_never_runs_scored_or_takes_a_day(pilot_repo):
+    now = datetime(2026, 11, 18, 21, 15, tzinfo=timezone.utc).isoformat()
+    with pytest.raises(SystemExit):
+        runmod.main(["--repo-root", str(pilot_repo), "--scheduled", "--phase", "scored", "--now", now])
+    with pytest.raises(SystemExit):
+        runmod.main(["--repo-root", str(pilot_repo), "--scheduled", "--day", "2026-11-18", "--now", now])
+
+
+def test_scheduled_without_a_window_does_nothing(repo):
+    root, _ = repo
+    assert scheduled(root, datetime(2026, 11, 18, 21, 15, tzinfo=timezone.utc)) == 0
+    assert not (root / "arena-data").exists()
+
+
+def test_committed_pilot_window():
+    cfg = json.loads((Path(runmod.__file__).parent / "config.json").read_text())
+    assert cfg["pilot_window"] == ["2026-11-16", "2026-11-20"] and cfg["scored_enabled"] is False
