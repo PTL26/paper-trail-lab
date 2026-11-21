@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from pathlib import Path
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
@@ -28,7 +29,8 @@ class FakeA:
 @pytest.fixture
 def scored(tmp_path, monkeypatch):
     secret, recipient = generate_identity()
-    cfg = {"phase": "scored", "scored_enabled": True, "model": "m", "tickers": TICKERS,
+    cfg = {"phase": "scored", "scored_enabled": True, "scored_window": ["2026-11-30", "2027-02-22"],
+           "first_publication_day": "2026-12-07", "model": "m", "tickers": TICKERS,
            "first_decision_day": "2026-11-30", "random_seed": 7, "bootstrap_seed": 11,
            "age_recipient": recipient, "usd_per_eur": 1.0, "data_root": "arena-data"}
     (tmp_path / "arena").mkdir()
@@ -98,3 +100,29 @@ def test_republishing_is_idempotent_and_tampering_is_caught(scored):
 def test_too_early_publishes_nothing(scored):
     root, secret, commit = scored
     assert pub.publish(root, date(2026, 12, 7), secret, fetch=fake_fetch, commit_times=lambda r, d: commit) is None
+
+
+# --- the first-publication guard (cron enabled at freeze; nothing is published before Mon 2026-12-07) ---
+
+@pytest.mark.parametrize("as_of", ["2026-11-23", "2026-11-30", "2026-12-06"])
+def test_main_publishes_nothing_before_the_first_publication_day(scored, monkeypatch, as_of, capsys):
+    root, _, _ = scored
+    called = []
+    monkeypatch.setattr(pub, "publish", lambda *a, **k: called.append(a))
+    assert pub.main(["--repo-root", str(root), "--as-of", as_of]) == 0
+    assert not called and "nothing published" in capsys.readouterr().out
+    assert not (root / "arena-data" / "public").exists()
+
+
+def test_main_publishes_from_the_first_publication_day(scored, monkeypatch):
+    root, _, _ = scored
+    called = []
+    monkeypatch.setattr(pub, "publish", lambda root, as_of, secret: called.append(as_of))
+    assert pub.main(["--repo-root", str(root), "--as-of", "2026-12-07"]) == 0
+    assert called == [date(2026, 12, 7)]
+
+
+def test_committed_first_publication_day():
+    cfg = json.loads((Path(pub.__file__).parent / "config.json").read_text())
+    assert cfg["first_publication_day"] == "2026-12-07" and date(2026, 12, 7).weekday() == 0
+

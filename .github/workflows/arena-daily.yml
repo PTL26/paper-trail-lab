@@ -1,18 +1,18 @@
-# Honest Arena daily run (draft section 5). Runs A, C and D for the day after the US close and pushes
-# the encrypted ledger, the encrypted decisions file and its SHA-256 before the next open.
-# The schedule runs the PILOT ONLY: `arena.run --scheduled` forces phase pilot, takes today's New York
-# date, and does nothing on non-trading days or outside config pilot_window (2026-11-16..2026-11-20).
-# Scored runs stay manual and are refused until scored_enabled is set at freeze.
+# Honest Arena daily run (pre-registration v1.0 section 5). Runs A, C and D for the day after the US close and
+# pushes the encrypted ledger, the encrypted decisions file and its SHA-256 before the next open.
+# The schedule runs SCORED only: `arena.run --scheduled` forces phase scored, takes today's New York date,
+# and does nothing on non-trading days or outside config scored_window (decision days 2026-11-23..2027-02-22).
+# Manual runs are refused outside their phase's window; the pilot window (16-20 Nov 2026) is closed.
 name: arena-daily
 
 on:
   workflow_dispatch:
     inputs:
       phase:
-        description: "pilot writes to arena-data/pilot only (never scored); scored is refused until freeze"
+        description: "scored (decision days 2026-11-23..2027-02-22); the pilot window is closed and refused"
         type: choice
-        options: [pilot, scored]
-        default: pilot
+        options: [scored, pilot]
+        default: scored
       day:
         description: "Trading day YYYY-MM-DD (empty = today in New York)"
         required: false

@@ -37,7 +37,7 @@ from .rollups import failed_day_summary, index_comparison, is_failed_day, ticker
 from .simulator import CAPITAL, simulate
 
 DELAY_SESSIONS = 5
-INTERIM_LABEL = "interim — no verdict before the end"  # draft v0.6 section 11
+INTERIM_LABEL = "interim — no verdict before the end"  # pre-registration v1.0 section 11
 
 
 def cutoff_session(as_of: date) -> date:
@@ -239,7 +239,13 @@ def main(argv=None) -> int:
     ap.add_argument("--as-of")
     a = ap.parse_args(argv)
     as_of = date.fromisoformat(a.as_of) if a.as_of else datetime.now(timezone.utc).astimezone(NEW_YORK).date()
-    path = publish(Path(a.repo_root).resolve(), as_of, secret_from_env())
+    root = Path(a.repo_root).resolve()
+    cfg = json.loads((root / "arena" / "config.json").read_text(encoding="utf-8"))
+    first = cfg.get("first_publication_day")
+    if not first or as_of < date.fromisoformat(first):
+        print(f"{as_of} is before the first publication day {first}; nothing published")
+        return 0
+    path = publish(root, as_of, secret_from_env())
     print(f"published {path}" if path else "nothing published")
     return 0
 

@@ -93,14 +93,21 @@ def test_arena_page(tmp_path):
     out = assemble(tmp_path)
     html = (out / "arena" / "index.html").read_text(encoding="utf-8")
     assert "<title>Honest Arena</title>" in html and "Not investment advice" in html
-    assert "Page date: 14 November 2026" in html
+    assert "Page date: 22 November 2026" in html
     for text in ("16–20 November 2026", "22 November 2026", "24 November 2026 – 22 February 2027",
-                 "By 1 March 2027", "Pre-registration hash: published at freeze on 22 Nov.", "Weekly reports"):
+                 "By 1 March 2027", "c1a9e5cecfdd6ed556601192e7c1d2b7c9c9cd357bf44826d9e503b2dd8e9529", "Weekly reports"):
         assert text in html, text
     for p in ("<th>A</th>", "<th>C</th>", "<th>D</th>"):
         assert p in html
-    assert 'href="https://github.com/PTL26/paper-trail-lab/blob/main/docs/HONEST_ARENA_PREREG_DRAFT.md"' in html
-    assert (ROOT / "docs" / "HONEST_ARENA_PREREG_DRAFT.md").is_file()
+    assert "published at freeze" not in html and "/blob/main/docs/HONEST_ARENA_PREREG" not in html
+    m = re.search(r'href="https://github.com/PTL26/paper-trail-lab/blob/([0-9a-f]{40})/docs/HONEST_ARENA_PREREG.md"', html)
+    assert m, "the rules link must point at the frozen commit, not main"
+    assert re.search(r'href="https://github.com/PTL26/paper-trail-lab/raw/[0-9a-f]{40}/docs/HONEST_ARENA_PREREG.md.ots"', html)
+    import hashlib, subprocess
+    frozen = subprocess.run(["git", "-C", str(ROOT), "show", f"{m.group(1)}:docs/HONEST_ARENA_PREREG.md"],
+                            capture_output=True, check=True).stdout
+    assert hashlib.sha256(frozen).hexdigest() in html
+    assert (ROOT / "docs" / "HONEST_ARENA_PREREG.md.ots").is_file()
     for h in re.findall(r'href="(\.\./[^"]*)"', html):
         assert (out / "arena" / h / "index.html").resolve().is_file(), h
     assert "prefers-color-scheme: dark" in html and 'name="viewport"' in html

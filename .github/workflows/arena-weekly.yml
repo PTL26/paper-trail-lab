@@ -1,7 +1,8 @@
 # Honest Arena Monday publication (draft section 11): decrypts and publishes, in plain text under
 # arena-data/public/, the scored decisions and aggregated trades at least 5 trading days old, plus the
 # weekly metrics report. Reads arena-data/scored only; pilot data is never published.
-# The schedule is DISABLED until the owner enables it: manual trigger only.
+# Scheduled Mondays 12:00 UTC. arena.publish refuses any as-of date before config first_publication_day
+# (Mon 2026-12-07), so earlier runs publish nothing.
 name: arena-weekly
 
 on:
@@ -11,8 +12,8 @@ on:
         description: "Publication date YYYY-MM-DD (empty = today in New York)"
         required: false
         default: ""
-  # schedule:
-  #   - cron: "0 12 * * 1"   # Monday 12:00 UTC, before the US open
+  schedule:
+    - cron: "0 12 * * 1"   # Monday 12:00 UTC, before the US open
 
 permissions:
   contents: write
