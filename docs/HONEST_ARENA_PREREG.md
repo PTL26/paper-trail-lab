@@ -1,8 +1,10 @@
-# Honest Arena — Pre-registration (DRAFT v0.6, not frozen)
+# Honest Arena — Pre-registration (v1.0, FROZEN)
 
-Paper Trail Lab · draft 2026-11-13 (v0.6; v0.5–v0.1 earlier the same week, v0.1 after the 4a investigation) · to be frozen (signed commit + SHA-256 + OpenTimestamps) on Sunday 2026-11-22, before the first scored decision (after the US close on Monday 2026-11-23).
+Paper Trail Lab · **version 1.0 · status: FROZEN · frozen 2026-11-22** (Sunday), before the first scored decision (after the US close on Monday 2026-11-23). Frozen with a signed commit; this file's SHA-256 is timestamped with OpenTimestamps (`HONEST_ARENA_PREREG.md.ots` next to it). Drafts v0.1–v0.6: 2026-11-13. Any later change is an amendment under section 12.
 
-Items marked **[PILOT]** are filled in from the pilot week (Monday 2026-11-16 → Friday 2026-11-20, 5 trading days). The pilot may only settle feasibility questions: cost, data availability, run time, output parsing. Pilot returns are never computed or looked at. Pilot runs write only to `arena-data/pilot/`; pilot output is never scored and never decrypted publicly. The pilot report covers run success, timing, cost, retries, failed data sources and the REVIEW count, and no labels or returns.
+Items that were marked [PILOT] in the drafts are filled in from the pilot week (Monday 2026-11-16 → Friday 2026-11-20, 5 trading days). The pilot may only settle feasibility questions: cost, data availability, run time, output parsing. Pilot returns are never computed or looked at. Pilot runs write only to `arena-data/pilot/`; pilot output is never scored and never decrypted publicly. The pilot report covers run success, timing, cost, retries, failed data sources and the REVIEW count, and no labels or returns.
+
+Changes in v1.0 (2026-11-22, freeze; after the pilot, before any scored data; no pilot labels or returns were seen): the [PILOT] items are filled in (TradingAgents commit, fallback model not needed, smallest detectable alpha) and a pilot results note is added (section 15).
 
 Changes in v0.6 (2026-11-13, before any data): all dates move one week earlier (pilot 16–20 Nov, freeze 22 Nov, first scored decision 23 Nov, scored period 24 Nov 2026 – 22 Feb 2027); the price source is confirmed; the weekly report carries no verdict wording.
 
@@ -28,7 +30,7 @@ This tests software as an ordinary user would run it. It is not a recommendation
 
 | ID | Participant | Configuration |
 |---|---|---|
-| A | TauricResearch/TradingAgents (Apache-2.0) | Default pipeline (4 analysts, 1 debate round, 1 risk round), memory on, version v0.7.1 or the release current at freeze [PILOT: exact commit] |
+| A | TauricResearch/TradingAgents (Apache-2.0) | Default pipeline (4 analysts, 1 debate round, 1 risk round), memory on, version v0.7.1 at commit `c4544913a14ed3df5f1ed7b9e8483270ce20682a` (the version tested in the pilot; kept even if a newer release exists) |
 | C | Buy-and-hold | Equal weight in every universe stock, bought on day 1, never rebalanced |
 | D | Random agent | Each stock each day draws one of A's five labels with equal probability and is mapped with the same rule as A; seed 20261130 |
 
@@ -40,7 +42,7 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
 
 - A uses one LLM for every role: **gemini-3.1-flash-lite** (Gemini Developer API, paid tier), with the project's default temperature and settings.
 - Why this model (decided 2026-11-13 from a 3-day dry run of both Flash-Lite models, on cost and reliability only, with no returns or labels seen): gemini-3.5-flash-lite's projected cost (about $13–14 per month for 10 stocks) leaves too little headroom under the €15 cap once memory-settlement calls and failed runs are added; gemini-3.1-flash-lite projected about $6 per month. The free tier was rejected because its quota errors would create missing decisions.
-- Fallback: Claude Haiku [PILOT: exact model id], only if Flash-Lite fails the pilot on reliability (more than 1 failed run in 5 days).
+- Fallback: Claude Haiku, only if Flash-Lite failed the pilot on reliability (more than 1 failed run in 5 days). Flash-Lite had 0 failed runs in the pilot, so the fallback is not used and no fallback model is fixed.
 - The model is chosen in the pilot by cost and reliability only, never by results.
 - If the provider retires the model during the test, the closest successor is used and logged as an amendment.
 
@@ -93,7 +95,14 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
 - **FAIL:** the whole interval is below 0.
 - **INCONCLUSIVE:** anything else.
 
-**Expected precision, stated in advance:** 60 trading days is short. Before the start we publish the smallest alpha this test could detect [PILOT: computed from the volatility of C over the prior 60 trading days, not from A's returns]. INCONCLUSIVE is a likely outcome and a valid one.
+**Expected precision, stated in advance:** 60 trading days is short. Before the start we publish the smallest alpha this test could detect, computed from the volatility of C, not from A's returns:
+
+- **Data:** C's portfolio (equal weight in the 10 stocks, bought once, never rebalanced) over the 60 trading days ending Friday 2026-11-20, the last session closed before the freeze (61 split-adjusted daily closes, 2026-08-27 → 2026-11-20, Yahoo Finance via yfinance; the 60th prior session, 2026-11-23, had not closed at freeze). Close-to-close daily returns, n = 60.
+- **Volatility:** standard deviation of C's daily return σ = 1.19% (0.011885).
+- **Method:** the daily alpha's standard deviation is assumed equal to σ, and days are treated as independent. Smallest detectable mean daily alpha = (1.96 + 0.84) × σ / √60, for a two-sided 95% interval with 80% power.
+- **Result:** **0.43% per day** (simple sum over 60 days ≈ 26%). For comparison, a mean daily alpha of 1.96 × σ / √60 = 0.30% per day (≈ 18% over 60 days) is what is needed for the interval to just exclude 0 on average (50% power).
+
+The real spread of A − C may be smaller than σ (A holds the same stocks), which would make the test more precise; the weekly block bootstrap may make it less precise. INCONCLUSIVE is a likely outcome and a valid one.
 
 ## 10. Stop and failure rules
 
@@ -146,3 +155,13 @@ C is the primary benchmark. D shows what chance looks like under the same mappin
 - LLM outputs vary between runs even with fixed settings.
 - The model may have been trained on news about these stocks up to its training cutoff; a forward test after that cutoff limits, but does not remove, this effect.
 - In the dry run Reddit refused TradingAgents' requests (HTTP 403) for every stock, so the social analyst ran without Reddit data. One FRED macro series was also missing. A runs with whatever its default data sources return; failed data sources are recorded per stock and day in the ledger as a reliability metric.
+
+## 15. Pilot results (16–20 Nov 2026)
+
+The pilot settled feasibility only. Labels and returns were not looked at; pilot output is never scored or published.
+
+- **Runs:** 50 of 50 succeeded (10 stocks × 5 days); no failed days, no errors.
+- **LLM cost:** $0.31–$0.32 per day ($1.59 for the week, $0.032 per stock per day); projected about $6.66 per month for 10 stocks and 21 trading days, under the €15 cap.
+- **Retries:** 23 LLM retries (22 rate-limit, 1 server error), all recovered; no call gave up.
+- **Failed data sources:** Reddit failed for every stock on every day (50 of 50), as in the dry run (section 14); no other source failed.
+- **REVIEW:** 0.
