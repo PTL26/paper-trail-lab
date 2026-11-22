@@ -24,6 +24,10 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 DEFAULT_DENYLIST = "~/hbl_private/denylist.txt"
+# Content of these files is not scanned (file names still are): age ciphertext and
+# OpenTimestamps proofs are random-looking bytes that decode to stray letters and trip
+# single-character regex entries. Every other file, binaries and images included, is scanned.
+CONTENT_EXEMPT_EXT = (".age", ".ots")
 MEDIA_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".tif", ".tiff", ".heic", ".pdf"}
 # Built-in checks that do not depend on the denylist.
 ABSOLUTE_PATH = re.compile(r"(?<![\w.])/(?:Users|home)/[A-Za-z0-9._-]+|\b[A-Za-z]:\\Users\\[A-Za-z0-9._-]+")
@@ -96,6 +100,8 @@ def is_utc_env(env: Dict[str, str]) -> bool:
 
 def scan_blob(name: str, data: bytes, deny: Denylist) -> List[Hit]:
     hits = scan_name(name, deny)
+    if name.lower().endswith(CONTENT_EXEMPT_EXT):
+        return hits
     if has_media_metadata(name, data):
         hits.append(Hit(name, 0, 0, "media-metadata (strip it before committing)"))
     hits += scan_text(data.decode("utf-8", errors="replace"), deny, name)

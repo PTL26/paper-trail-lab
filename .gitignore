@@ -5,3 +5,4 @@ __pycache__/
 .DS_Store
 skills/*/evals/results/
 _site/
+*.ots.bak

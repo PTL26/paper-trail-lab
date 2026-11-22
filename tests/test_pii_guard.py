@@ -10,6 +10,7 @@ from tools.pii_guard import (
     Denylist,
     has_media_metadata,
     is_utc_env,
+    scan_blob,
     scan_name,
     scan_text,
 )
@@ -101,3 +102,23 @@ def test_media_metadata_detection():
 )
 def test_is_utc_env(env, ok):
     assert is_utc_env(env) is ok
+
+
+@pytest.mark.parametrize("name, blocked", [
+    ("docs/proof.md.ots", False),
+    ("arena-data/week.json.age", False),
+    ("notes/proof.txt", True),
+    ("docs/proof.md", True),
+])
+def test_content_exempt_only_for_age_and_ots(tmp_path, name, blocked):
+    # Same bytes in every file: random-looking binary that decodes to a single
+    # non-ASCII letter, the false positive seen on the upgraded .ots proof.
+    d = make(tmp_path, "re:[" + LT_CHAR + "]")
+    data = b"\x00\xf0\x13" + LT_CHAR.encode("utf-8") + b"\x08\xff\n"
+    assert bool(scan_blob(name, data, d)) is blocked
+
+
+def test_content_exempt_files_still_have_names_checked(tmp_path):
+    d = make(tmp_path, "Zorblax")
+    assert scan_blob("arena-data/zorblax.age", b"", d)
+    assert scan_blob("docs/zorblax.ots", b"", d)
