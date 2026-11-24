@@ -46,6 +46,7 @@ jobs:
           uv run --python 3.12 python -m arena.publish --as-of "$AS_OF"
       - name: Commit and push (bot identity, UTC)
         run: |
+          if [ ! -d arena-data/public ]; then echo "nothing published"; exit 0; fi
           git add -A arena-data/public
           if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
           bad=$(git diff --cached --name-only | grep -v '^arena-data/public/' || true)
